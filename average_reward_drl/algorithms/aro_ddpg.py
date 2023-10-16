@@ -52,6 +52,24 @@ class ARO_DDPG(AlgorithmBase):
             "cuda:0" if cuda.is_available() else "cpu"
         ),
     ) -> None:
+        """
+        ARO-DDPG algorithm.
+
+        Args:
+            dim_state (int): Dimension of the state space.
+            dim_action (int): Dimension of the action space.
+            update_interval (int, optional): Interval of updates. Defaults to 10.
+            critic_update_freq (int, optional): Frequency of critic updates. Defaults to 1.
+            actor_update_freq (int, optional): Frequency of actor updates. Defaults to 2.
+            lr (float, optional): Learning rate. Defaults to 3e-4.
+            batch_size (int, optional): Batch size. Defaults to 256.
+            replay_buffer_capacity (int, optional): Capacity of the replay buffer. Defaults to 10**6.
+            replay_start_size (int, optional): Number of transitions to be stored in the replay buffer before training.\
+                Defaults to 1000.
+            tau (float, optional): Weight for the target network updates. Defaults to 0.005.
+            device (Union[str, torch.device], optional): Device to use.\
+                  Defaults to torch.device("cuda:0" if cuda.is_available() else "cpu").
+        """
         super().__init__()
 
         # define dimensions
