@@ -18,7 +18,14 @@ def run_episode():
     while not terminated and not truncated:
         action = env.action_space.sample()
         next_state, reward, terminated, truncated, info = env.step(action)
-        replay_buffer.append(state, next_state, action, reward, terminated, truncated)
+        replay_buffer.append(
+            state,
+            next_state,
+            action,
+            reward,
+            terminated,
+            truncated,
+        )
         state = next_state
 
 

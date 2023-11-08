@@ -1,26 +1,42 @@
 import contextlib
 from abc import ABCMeta, abstractmethod
 from typing import Any
+import numpy as np
+from average_reward_drl.replay_buffer import ReplayBuffer
 
 
 class AlgorithmBase(object, metaclass=ABCMeta):
     """Abstract agent class."""
 
     training = True
+    replay_buffer: ReplayBuffer
 
     @abstractmethod
-    def act(self, *args, **kwargs) -> Any:
+    def act(self, state: np.ndarray) -> np.ndarray:
         raise NotImplementedError()
 
-    @abstractmethod
-    def observe(self, *args, **kwargs) -> None:
-        """
-        Observe consequences of the last action.(e.g. state, next_state, action, reward, terminated)
-        """
-        raise NotImplementedError()
+    def observe(
+        self,
+        state: np.ndarray,
+        next_state: np.ndarray,
+        action: np.ndarray,
+        reward: float,
+        terminated: bool,
+        truncated: bool,
+    ):
+        if self.training:
+            self.replay_buffer.append(
+                state=state,
+                next_state=next_state,
+                action=action,
+                reward=reward,
+                terminated=terminated,
+                truncated=truncated,
+            )
+            self.update_if_dataset_is_ready()
 
     @abstractmethod
-    def update_if_dataset_is_ready(self, *args, **kwargs) -> Any:
+    def update_if_dataset_is_ready(self) -> Any:
         """
         Update the agent.(e.g. policy, q_function, ...)
         """

@@ -4,7 +4,7 @@ from typing import Any, Union
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch import nn, cuda
+from torch import cuda, nn
 from torch.optim import Adam
 
 from average_reward_drl.algorithm import AlgorithmBase
@@ -110,26 +110,6 @@ class ARO_DDPG(AlgorithmBase):
 
         self.device = device
 
-    def observe(
-        self,
-        state: np.ndarray,
-        next_state: np.ndarray,
-        action: np.ndarray,
-        reward: float,
-        terminated: bool,
-        truncated: bool,
-    ):
-        if self.training:
-            self.replay_buffer.append(
-                state=state,
-                next_state=next_state,
-                action=action,
-                reward=reward,
-                terminated=terminated,
-                truncated=truncated,
-            )
-            self.update_if_dataset_is_ready()
-
     def act(self, state: np.ndarray) -> np.ndarray:
         with torch.no_grad():
             if self.training:
@@ -140,12 +120,12 @@ class ARO_DDPG(AlgorithmBase):
                     action = self.policy(state).squeeze(
                         0
                     ).cpu().numpy() + np.random.normal(0, 0.1, size=(self.dim_action,))
-                    action = np.clip(action, -1, 1)
 
             else:
                 state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
                 action = self.policy(state).squeeze(0).cpu().numpy()
-                action = np.clip(action, -1, 1)
+
+            action = np.clip(action, -1.0, 1.0)
 
             return action
 

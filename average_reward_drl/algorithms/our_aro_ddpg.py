@@ -4,7 +4,7 @@ from typing import Any, Union
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch import nn, cuda
+from torch import cuda, nn
 from torch.optim import Adam
 
 from average_reward_drl.algorithm import AlgorithmBase

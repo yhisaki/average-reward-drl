@@ -1,11 +1,9 @@
 import random
-from typing import Optional
+from typing import Iterable, Optional
 
 import gymnasium
 import numpy as np
 import torch
-
-from typing import Iterable
 
 
 def fix_seed(

@@ -1,9 +1,10 @@
-from numbers import Number
 from typing import Tuple
 
 import torch
 from torch import nn
-from torch.distributions import Distribution, constraints
+from torch.distributions import Normal, TransformedDistribution
+from torch.distributions.independent import Independent
+from torch.distributions.transforms import TanhTransform
 
 
 class ConcatStateAction(nn.Module):
@@ -14,72 +15,60 @@ class ConcatStateAction(nn.Module):
         return torch.cat(state_action, dim=-1)
 
 
-class Delta(Distribution):
-    """Delta distribution.
+class ScalarHolder(nn.Module):
+    def __init__(self, value: float = 0.0):
+        """
+        A module that holds a scalar value.
 
-    This is used
+        Args:
+            value (float): Initial value of the scalar.
+        """
 
-    Args:
-        loc (float or Tensor): location of the distribution.
-    """
-
-    arg_constraints = {"loc": constraints.real}
-    # mypy complains about the type of `support` since it is initialized
-    # as None in `torch.distributions.Distribution` as of torch==1.5.0.
-    support = constraints.real  # type: ignore
-    has_rsample = True
-
-    @property
-    def mean(self):
-        return self.loc
-
-    @property
-    def stddev(self):
-        return torch.zeros_like(self.loc)
-
-    @property
-    def variance(self):
-        return torch.zeros_like(self.loc)
-
-    def __init__(self, loc, validate_args=None):
-        self.loc = loc
-        if isinstance(loc, Number):
-            batch_shape = torch.Size()
-        else:
-            batch_shape = self.loc.size()
-        super(Delta, self).__init__(batch_shape, validate_args=validate_args)
-
-    def expand(self, batch_shape, _instance=None):
-        new = self._get_checked_instance(Delta, _instance)
-        batch_shape = torch.Size(batch_shape)
-        new.loc = self.loc.expand(batch_shape)
-        super(Delta, new).__init__(batch_shape, validate_args=False)
-        new._validate_args = self._validate_args
-        return new
-
-    def sample(self, sample_shape=torch.Size()):
-        with torch.no_grad():
-            return self.rsample(sample_shape).detach()
-
-    def rsample(self, sample_shape=torch.Size()):
-        shape = self._extended_shape(sample_shape)
-        return self.loc.expand(shape)
-
-    def log_prob(self, value):
-        raise RuntimeError("Not defined")
-
-    def entropy(self):
-        raise RuntimeError("Not defined")
-
-
-class DeterministicHead(nn.Module):
-    """Head module for a deterministic policy."""
-
-    def __init__(self):
         super().__init__()
+        self.value = nn.Parameter(torch.tensor(value, dtype=torch.float32))
 
-    def forward_stochastic(self, loc):
-        return torch.distributions.Independent(Delta(loc=loc), 1)
+    def forward(self):
+        return self.value
 
-    def forward_determistic(self, loc) -> torch.Tensor:
-        return loc
+
+class ClippedScalarHolder(nn.Module):
+    def __init__(
+        self, value: float = 0.0, min_value: float = 0.0, max_value: float = 1.0
+    ):
+        super().__init__()
+        self.min_value = min_value
+        self.max_value = max_value
+        self.value = nn.Parameter(torch.tensor(value, dtype=torch.float32))
+
+    def forward(self):
+        return torch.clamp(self.value, self.min_value, self.max_value)
+
+
+class TemperatureHolder(nn.Module):
+    def __init__(self, log_temperature: float = 0.0):
+        """
+        A module that holds a scalar value.
+
+        Args:
+            value (float): Initial value of the scalar.
+        """
+
+        super().__init__()
+        self.log_temperature = nn.Parameter(
+            torch.tensor(log_temperature, dtype=torch.float32)
+        )
+
+    def forward(self):
+        return torch.exp(self.log_temperature)
+
+
+class SquashedDiagonalGaussianHead(nn.Module):
+    def forward(self, x):
+        mean, log_std = torch.chunk(x, 2, dim=-1)
+        log_std = torch.clamp(log_std, -20.0, 2.0)
+        std = torch.exp(log_std)
+        base_distribution = Independent(Normal(loc=mean, scale=std), 1)
+        squashed_distribution = TransformedDistribution(
+            base_distribution, TanhTransform()
+        )
+        return squashed_distribution
