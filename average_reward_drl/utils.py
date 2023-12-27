@@ -1,5 +1,5 @@
 import random
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Callable
 
 import gymnasium
 import numpy as np
@@ -46,3 +46,34 @@ def polyak_update(
         for param, target_param in zip(params, target_params):
             target_param.data.mul_(1 - tau)
             torch.add(target_param.data, param.data, alpha=tau, out=target_param.data)
+
+
+ActorFunc = Callable[[np.ndarray], np.ndarray]
+
+
+def eval_actor(env: gymnasium.Env, actor: ActorFunc, num_episodes: int = 10):
+    reward_sums = []
+    step_per_episodes = []
+
+    for _ in range(num_episodes):
+        state, _ = env.reset()
+        terminated, truncated = False, False
+
+        step_per_episode = 0
+        reward_sum = 0.0
+
+        while not (terminated or truncated):
+            action = actor(state)
+            next_state, reward, terminated, truncated, _ = env.step(action)
+            reward_sum += reward
+            step_per_episode += 1
+
+            if terminated or truncated:
+                break
+            else:
+                state = next_state
+
+        reward_sums.append(reward_sum)
+        step_per_episodes.append(step_per_episode)
+
+    return np.mean(reward_sums), np.mean(step_per_episodes)

@@ -169,5 +169,5 @@ class SoftActorCritic(AlgorithmBase):
         self.temperature_optimizer.step()
 
     def update_target_networks(self):
-        polyak_update(self.q1, self.q1_target, self.tau)
-        polyak_update(self.q2, self.q2_target, self.tau)
+        polyak_update(self.q1.parameters(), self.q1_target.parameters(), self.tau)
+        polyak_update(self.q2.parameters(), self.q2_target.parameters(), self.tau)

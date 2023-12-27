@@ -15,6 +15,9 @@ from average_reward_drl.replay_buffer import Batch, ReplayBuffer
 from average_reward_drl.utils import polyak_update
 
 
+from typing import Callable
+
+
 def get_reset_cost_network(dim_state: int, dim_action: int):
     return nn.Sequential(
         ConcatStateAction(),
@@ -43,8 +46,23 @@ class AutoTunedResetCost:
         dim_state: int,
         dim_action: int,
     ) -> None:
-        self.reset_cost_network1 = get_reset_cost_network(dim_state, dim_action)
-        self.reset_cost_network2 = get_reset_cost_network(dim_state, dim_action)
+        self.reset_cost_q1 = get_reset_cost_network(dim_state, dim_action)
+        self.reset_cost_q2 = get_reset_cost_network(dim_state, dim_action)
+        self.reset_cost_q1_target = (
+            copy.deepcopy(self.reset_cost_q1).eval().requires_grad_(False)
+        )
+        self.reset_cost_q2_target = (
+            copy.deepcopy(self.reset_cost_q2).eval().requires_grad_(False)
+        )
 
-    def update(self, batch: Batch) -> None:
-        pass
+    def update(
+        self, batch: Batch, get_next_action: Callable[[torch.Tensor], torch.Tensor]
+    ) -> None:
+        with torch.no_grad():
+            next_actions = get_next_action(batch.next_state)
+            next_reset_cost_q1 = self.reset_cost_q1_target(
+                (batch.next_state, next_actions)
+            )
+            next_reset_cost_q2 = self.reset_cost_q2_target(
+                (batch.next_state, next_actions)
+            )
