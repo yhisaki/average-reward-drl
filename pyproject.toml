@@ -11,6 +11,9 @@ gymnasium = {extras = ["mujoco"], version = "^0.29.1"}
 hydra-core = "^1.3.2"
 wandb = "^0.15.12"
 torch = {version = "^2.1.0+cu121", source = "pytorch"}
+colorama = "^0.4.6"
+dm-control = "^1.0.16"
+tqdm = "^4.66.1"
 
 
 [tool.poetry.group.dev.dependencies]

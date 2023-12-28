@@ -1,7 +1,9 @@
 import contextlib
 from abc import ABCMeta, abstractmethod
 from typing import Any
+
 import numpy as np
+
 from average_reward_drl.replay_buffer import ReplayBuffer
 
 

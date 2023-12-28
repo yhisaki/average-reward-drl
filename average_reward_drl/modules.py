@@ -1,3 +1,4 @@
+import math
 from typing import Tuple
 
 import torch
@@ -5,7 +6,6 @@ from torch import nn
 from torch.distributions import Normal, TransformedDistribution
 from torch.distributions.independent import Independent
 from torch.distributions.transforms import TanhTransform
-import math
 
 
 class ConcatStateAction(nn.Module):
@@ -17,7 +17,11 @@ class ConcatStateAction(nn.Module):
 
 
 class ScalarHolder(nn.Module):
-    def __init__(self, value: float = 0.0):
+    def __init__(
+        self,
+        value: float = 0.0,
+        transform_fn=lambda x: x,
+    ):
         """
         A module that holds a scalar value.
 
@@ -27,9 +31,10 @@ class ScalarHolder(nn.Module):
 
         super().__init__()
         self.value = nn.Parameter(torch.tensor(value, dtype=torch.float32))
+        self.transform_fn = transform_fn
 
     def forward(self):
-        return self.value
+        return self.transform_fn(self.value)
 
 
 class MultiLinear(nn.Module):
@@ -85,24 +90,6 @@ class MultiLinear(nn.Module):
             self.num_parallel,
             self.bias is not None,
         )
-
-
-class TemperatureHolder(nn.Module):
-    def __init__(self, log_temperature: float = 0.0):
-        """
-        A module that holds a scalar value.
-
-        Args:
-            value (float): Initial value of the scalar.
-        """
-
-        super().__init__()
-        self.log_temperature = nn.Parameter(
-            torch.tensor(log_temperature, dtype=torch.float32)
-        )
-
-    def forward(self):
-        return torch.exp(self.log_temperature)
 
 
 class SquashedDiagonalGaussianHead(nn.Module):

@@ -9,26 +9,16 @@ from torch.distributions import Distribution
 from torch.optim import Adam
 
 from average_reward_drl.algorithm import AlgorithmBase
+from average_reward_drl.logger import Logger
 from average_reward_drl.modules import (
     ConcatStateAction,
-    SquashedDiagonalGaussianHead,
-    TemperatureHolder,
     MultiLinear,
+    ScalarHolder,
+    SquashedDiagonalGaussianHead,
     ortho_init,
 )
 from average_reward_drl.replay_buffer import Batch, ReplayBuffer
 from average_reward_drl.utils import polyak_update
-
-
-class ResetCostHolder(nn.Module):
-    def __init__(self, initial_reset_cost_param: float = 0.0):
-        super().__init__()
-        self.reset_cost_param = nn.Parameter(
-            torch.tensor(initial_reset_cost_param, dtype=torch.float32)
-        )
-
-    def forward(self):
-        return F.softplus(self.reset_cost_param)
 
 
 class RVI_SAC(AlgorithmBase):
@@ -43,63 +33,67 @@ class RVI_SAC(AlgorithmBase):
         replay_start_size: int = 10**4,
         tau: float = 0.005,
         rho_update_tau: float = 1e-2,
+        use_reset: bool = True,
         device: Union[str, torch.device] = torch.device(
             "cuda:0" if cuda.is_available() else "cpu"
         ),
     ) -> None:
         super().__init__()
 
+        # define dimensions
         self.dim_state = dim_state
         self.dim_action = dim_action
 
         # define networks
         hidden_dim = 256
         num_parallel = 4
+        init_gain = np.sqrt(1.0 / 3.0)
 
+        # critic
         self.critic = nn.Sequential(
             ConcatStateAction(),
             ortho_init(
                 MultiLinear(num_parallel, dim_state + dim_action, hidden_dim),
-                gain=np.sqrt(1.0 / 3.0),
+                gain=init_gain,
             ),
             nn.ReLU(),
             ortho_init(
                 MultiLinear(num_parallel, hidden_dim, hidden_dim),
-                gain=np.sqrt(1.0 / 3.0),
+                gain=init_gain,
             ),
             nn.ReLU(),
-            ortho_init(
-                MultiLinear(num_parallel, hidden_dim, 1), gain=np.sqrt(1.0 / 3.0)
-            ),
+            ortho_init(MultiLinear(num_parallel, hidden_dim, 1), gain=init_gain),
         ).to(device)
 
         self.critic_target = copy.deepcopy(self.critic).eval().requires_grad_(False)
 
-        self.gaussian_head = SquashedDiagonalGaussianHead()
+        # define rho (average reward)
+        self.rho = 0.0
+        self.rho_reset = 0.0
 
+        # actor
+        self.actor_gaussian_head = SquashedDiagonalGaussianHead()
         self.actor = nn.Sequential(
             ortho_init(nn.Linear(dim_state, hidden_dim), gain=np.sqrt(1.0 / 3.0)),
             nn.ReLU(),
             ortho_init(nn.Linear(hidden_dim, hidden_dim), gain=np.sqrt(1.0 / 3.0)),
             nn.ReLU(),
             ortho_init(nn.Linear(hidden_dim, dim_action * 2), gain=np.sqrt(1.0 / 3.0)),
-            self.gaussian_head,
+            self.actor_gaussian_head,
         ).to(device)
 
-        self.rho = 0.0
-        self.rho_reset = 0.0
-        self.rho_update_tau = rho_update_tau
-
-        self.reset_cost = ResetCostHolder().to(device)
+        self.reset_cost = ScalarHolder(value=0.0, transform_fn=F.softplus).to(device)
         self.reset_cost_optimizer = Adam(self.reset_cost.parameters(), lr=lr)
         self.target_reset_prob = target_reset_prob
+
+        self.use_reset = use_reset
 
         # define optimizers
         self.critic_optimizer = Adam(self.critic.parameters(), lr=lr)
         self.policy_optimizer = Adam(self.actor.parameters(), lr=lr)
 
         # define temperature
-        self.temperature = TemperatureHolder().to(device)
+        self.temperature = ScalarHolder(value=1.0, transform_fn=torch.exp).to(device)
         self.temperature_optimizer = Adam(self.temperature.parameters(), lr=lr)
 
         # define replay buffer
@@ -107,11 +101,13 @@ class RVI_SAC(AlgorithmBase):
         self.batch_size = batch_size
         self.replay_start_size = replay_start_size
 
+        # define other hyperparameters
         self.tau = tau
+        self.rho_update_tau = rho_update_tau
 
         self.device = device
 
-        self.logs = {}
+        self.logs = Logger()
 
     @torch.no_grad()
     def act(self, state: np.ndarray) -> np.ndarray:
@@ -125,9 +121,9 @@ class RVI_SAC(AlgorithmBase):
 
         else:
             state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
-            self.gaussian_head.deterministic = True
+            self.actor_gaussian_head.deterministic = True
             action = self.actor(state).squeeze(0).cpu().numpy()
-            self.gaussian_head.deterministic = False
+            self.actor_gaussian_head.deterministic = False
 
         action = np.clip(action, -1.0, 1.0)
 
@@ -159,11 +155,9 @@ class RVI_SAC(AlgorithmBase):
 
             entropy_term = self.temperature() * next_log_prob
 
-            # reward = torch.nan_to_num(batch.reward, nan=-float(self.reset_cost()))
-            reward = torch.nan_to_num(batch.reward, nan=0.0)
-            reset = torch.isnan(batch.reward).float()
+            reset = -batch.terminated.float()
 
-            target_q = reward - self.rho + (next_q - entropy_term)
+            target_q = batch.reward - self.rho + (next_q - entropy_term)
             target_q_reset = reset - self.rho_reset + (next_q_reset)
 
             target_rho = torch.mean(next_q - entropy_term)
@@ -194,13 +188,13 @@ class RVI_SAC(AlgorithmBase):
             1 - self.rho_update_tau
         ) * self.rho_reset + self.rho_update_tau * target_rho_reset
 
-        self.logs["q1_pred"] = float(q1_pred.mean())
-        self.logs["q2_pred"] = float(q2_pred.mean())
-        self.logs["q1_reset_pred"] = float(q1_reset_pred.mean())
-        self.logs["q2_reset_pred"] = float(q2_reset_pred.mean())
-        self.logs["rho"] = float(self.rho)
-        self.logs["rho_reset"] = float(self.rho_reset)
-        self.logs["critic_loss"] = float(critic_loss)
+        self.logs.log("critic_loss", float(critic_loss))
+        self.logs.log("q1_pred", float(q1_pred.mean()))
+        self.logs.log("q2_pred", float(q2_pred.mean()))
+        self.logs.log("q1_reset_pred", float(q1_reset_pred.mean()))
+        self.logs.log("q2_reset_pred", float(q2_reset_pred.mean()))
+        self.logs.log("rho", float(self.rho))
+        self.logs.log("rho_reset", float(self.rho_reset))
 
     def update_actor(self, batch: Batch):
         action_dist: Distribution = self.actor(batch.state)
@@ -212,7 +206,9 @@ class RVI_SAC(AlgorithmBase):
             (batch.state.repeat(4, 1, 1), action.repeat(4, 1, 1))
         )
 
-        q = torch.min(q1, q2) - float(reset_cost) * torch.min(q1_reset, q2_reset)
+        q = torch.min(q1, q2) + self.use_reset * float(reset_cost) * torch.min(
+            q1_reset, q2_reset
+        )
         # q = torch.min(q1, q2)
         # L(θ) = E_π[α * log π(a|s) - Q(s, a)]
         policy_loss = torch.mean(self.temperature().detach() * log_prob - q.flatten())
@@ -235,15 +231,15 @@ class RVI_SAC(AlgorithmBase):
 
         # update reset cost
         reset_cost_loss = -torch.mean(
-            reset_cost * (self.rho_reset - self.target_reset_prob)
+            reset_cost * (-self.rho_reset - self.target_reset_prob)
         )
         self.reset_cost_optimizer.zero_grad()
         reset_cost_loss.backward()
         self.reset_cost_optimizer.step()
 
-        self.logs["policy_loss"] = float(policy_loss)
-        self.logs["temperature"] = float(self.temperature())
-        self.logs["reset_cost"] = float(reset_cost)
+        self.logs.log("policy_loss", float(policy_loss))
+        self.logs.log("temperature", float(self.temperature()))
+        self.logs.log("reset_cost", float(self.reset_cost()))
 
     def update_target_networks(self):
         polyak_update(

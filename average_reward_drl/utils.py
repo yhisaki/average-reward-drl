@@ -1,9 +1,10 @@
 import random
-from typing import Iterable, Optional, Callable
+from typing import Callable, Iterable, Optional
 
 import gymnasium
 import numpy as np
 import torch
+from dm_control.rl.control import Environment
 
 
 def fix_seed(
@@ -51,7 +52,7 @@ def polyak_update(
 ActorFunc = Callable[[np.ndarray], np.ndarray]
 
 
-def eval_actor(env: gymnasium.Env, actor: ActorFunc, num_episodes: int = 10):
+def eval_actor_gymnasium(env: gymnasium.Env, actor: ActorFunc, num_episodes: int = 10):
     reward_sums = []
     step_per_episodes = []
 
@@ -72,6 +73,32 @@ def eval_actor(env: gymnasium.Env, actor: ActorFunc, num_episodes: int = 10):
                 break
             else:
                 state = next_state
+
+        reward_sums.append(reward_sum)
+        step_per_episodes.append(step_per_episode)
+
+    return np.mean(reward_sums), np.mean(step_per_episodes)
+
+
+def eval_actor_dm_control(env: Environment, actor: ActorFunc, num_episodes: int = 10):
+    reward_sums = []
+    step_per_episodes = []
+
+    for _ in range(num_episodes):
+        timestep = env.reset()
+        terminated = False
+
+        step_per_episode = 0
+        reward_sum = 0.0
+
+        while not terminated:
+            action = actor(timestep.observation["observations"])
+            timestep = env.step(action)
+            reward_sum += timestep.reward
+            step_per_episode += 1
+
+            if timestep.last():
+                break
 
         reward_sums.append(reward_sum)
         step_per_episodes.append(step_per_episode)

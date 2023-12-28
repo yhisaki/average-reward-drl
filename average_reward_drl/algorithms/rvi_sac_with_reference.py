@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Union
+from typing import Any, Union, Tuple
 
 import numpy as np
 import torch
@@ -21,17 +21,20 @@ from average_reward_drl.replay_buffer import Batch, ReplayBuffer
 from average_reward_drl.utils import polyak_update
 
 
-class SAC(AlgorithmBase):
+class RVI_SAC_WITH_REFERENCE(AlgorithmBase):
     def __init__(
         self,
         dim_state: int,
         dim_action: int,
-        gamma: float = 0.99,
+        reference: Tuple[np.ndarray, np.ndarray],
+        target_reset_prob: float = 1e-3,
         lr: float = 3e-4,
-        batch_size: int = 256,
+        batch_size: int = 250,
         replay_buffer_capacity: int = 10**6,
-        replay_start_size: int = 1000,
+        replay_start_size: int = 10**4,
         tau: float = 0.005,
+        rho_update_tau: float = 1e-2,
+        use_reset: bool = True,
         device: Union[str, torch.device] = torch.device(
             "cuda:0" if cuda.is_available() else "cpu"
         ),
@@ -44,9 +47,10 @@ class SAC(AlgorithmBase):
 
         # define networks
         hidden_dim = 256
-        num_parallel = 2
+        num_parallel = 4
         init_gain = np.sqrt(1.0 / 3.0)
 
+        # critic
         self.critic = nn.Sequential(
             ConcatStateAction(),
             ortho_init(
@@ -55,22 +59,31 @@ class SAC(AlgorithmBase):
             ),
             nn.ReLU(),
             ortho_init(
-                MultiLinear(num_parallel, hidden_dim, hidden_dim), gain=init_gain
+                MultiLinear(num_parallel, hidden_dim, hidden_dim),
+                gain=init_gain,
             ),
             nn.ReLU(),
             ortho_init(MultiLinear(num_parallel, hidden_dim, 1), gain=init_gain),
         ).to(device)
+
         self.critic_target = copy.deepcopy(self.critic).eval().requires_grad_(False)
 
+        # actor
         self.actor_gaussian_head = SquashedDiagonalGaussianHead()
         self.actor = nn.Sequential(
-            ortho_init(nn.Linear(dim_state, hidden_dim), gain=init_gain),
+            ortho_init(nn.Linear(dim_state, hidden_dim), gain=np.sqrt(1.0 / 3.0)),
             nn.ReLU(),
-            ortho_init(nn.Linear(hidden_dim, hidden_dim), gain=init_gain),
+            ortho_init(nn.Linear(hidden_dim, hidden_dim), gain=np.sqrt(1.0 / 3.0)),
             nn.ReLU(),
-            ortho_init(nn.Linear(hidden_dim, dim_action * 2), gain=init_gain),
+            ortho_init(nn.Linear(hidden_dim, dim_action * 2), gain=np.sqrt(1.0 / 3.0)),
             self.actor_gaussian_head,
         ).to(device)
+
+        self.reset_cost = ScalarHolder(value=0.0, transform_fn=F.softplus).to(device)
+        self.reset_cost_optimizer = Adam(self.reset_cost.parameters(), lr=lr)
+        self.target_reset_prob = target_reset_prob
+
+        self.use_reset = use_reset
 
         # define optimizers
         self.critic_optimizer = Adam(self.critic.parameters(), lr=lr)
@@ -86,10 +99,10 @@ class SAC(AlgorithmBase):
         self.replay_start_size = replay_start_size
 
         # define other hyperparameters
-        self.gamma = gamma  # discount factor
-        self.tau = tau  # target network update rate
+        self.reference = reference
+        self.tau = tau
+        self.rho_update_tau = rho_update_tau
 
-        # define device
         self.device = device
 
         self.logs = Logger()
@@ -130,24 +143,37 @@ class SAC(AlgorithmBase):
             next_action_dist: Distribution = self.actor(batch.next_state)
             next_action = next_action_dist.sample()
             next_log_prob = next_action_dist.log_prob(next_action)
-            next_q1, next_q2 = self.critic_target(
-                (batch.next_state.repeat(2, 1, 1), next_action.repeat(2, 1, 1))
+
+            next_q1, next_q2, next_q1_reset, next_q2_reset = self.critic_target(
+                (batch.next_state.repeat(4, 1, 1), next_action.repeat(4, 1, 1))
             )
-            next_q = torch.flatten(torch.min(next_q1, next_q2))
+
+            next_q = torch.min(next_q1, next_q2).flatten()
+            next_q_reset = torch.min(next_q1_reset, next_q2_reset).flatten()
+
             entropy_term = self.temperature() * next_log_prob
 
-            target_q = batch.reward + self.gamma * (1.0 - batch.truncated.float()) * (
-                next_q - entropy_term
-            )
+            reset = -batch.terminated.float()
 
-        q1_pred, q2_pred = self.critic(
-            (batch.state.repeat(2, 1, 1), batch.action.repeat(2, 1, 1))
+            target_q = batch.reward - self.rho + (next_q - entropy_term)
+            target_q_reset = reset - self.rho_reset + (next_q_reset)
+
+            target_rho = torch.mean(next_q - entropy_term)
+            target_rho_reset = torch.mean(next_q_reset)
+
+        q1_pred, q2_pred, q1_reset_pred, q2_reset_pred = self.critic(
+            (batch.state.repeat(4, 1, 1), batch.action.repeat(4, 1, 1))
         )
 
-        critic_loss = 0.5 * (
+        q_loss = 0.5 * (
             F.mse_loss(q1_pred.flatten(), target_q)
             + F.mse_loss(q2_pred.flatten(), target_q)
         )
+        q_reset_loss = 0.5 * (
+            F.mse_loss(q1_reset_pred.flatten(), target_q_reset)
+            + F.mse_loss(q2_reset_pred.flatten(), target_q_reset)
+        )
+        critic_loss = q_loss + q_reset_loss
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
@@ -156,16 +182,27 @@ class SAC(AlgorithmBase):
         self.logs.log("critic_loss", float(critic_loss))
         self.logs.log("q1_pred", float(q1_pred.mean()))
         self.logs.log("q2_pred", float(q2_pred.mean()))
+        self.logs.log("q1_reset_pred", float(q1_reset_pred.mean()))
+        self.logs.log("q2_reset_pred", float(q2_reset_pred.mean()))
+        self.logs.log("rho", float(self.rho))
+        self.logs.log("rho_reset", float(self.rho_reset))
 
     def update_actor(self, batch: Batch):
         action_dist: Distribution = self.actor(batch.state)
         action = action_dist.rsample()
         log_prob = action_dist.log_prob(action)
-        q1, q2 = self.critic((batch.state.repeat(2, 1, 1), action.repeat(2, 1, 1)))
-        q = torch.flatten(torch.min(q1, q2))
+        reset_cost = self.reset_cost()
 
+        q1, q2, q1_reset, q2_reset = self.critic(
+            (batch.state.repeat(4, 1, 1), action.repeat(4, 1, 1))
+        )
+
+        q = torch.min(q1, q2) + self.use_reset * float(reset_cost) * torch.min(
+            q1_reset, q2_reset
+        )
+        # q = torch.min(q1, q2)
         # L(θ) = E_π[α * log π(a|s) - Q(s, a)]
-        policy_loss = torch.mean(self.temperature().detach() * log_prob - q)
+        policy_loss = torch.mean(self.temperature().detach() * log_prob - q.flatten())
 
         self.policy_optimizer.zero_grad()
         policy_loss.backward()
@@ -183,8 +220,17 @@ class SAC(AlgorithmBase):
         temperature_loss.backward()
         self.temperature_optimizer.step()
 
+        # update reset cost
+        reset_cost_loss = -torch.mean(
+            reset_cost * (-self.rho_reset - self.target_reset_prob)
+        )
+        self.reset_cost_optimizer.zero_grad()
+        reset_cost_loss.backward()
+        self.reset_cost_optimizer.step()
+
         self.logs.log("policy_loss", float(policy_loss))
         self.logs.log("temperature", float(self.temperature()))
+        self.logs.log("reset_cost", float(self.reset_cost()))
 
     def update_target_networks(self):
         polyak_update(

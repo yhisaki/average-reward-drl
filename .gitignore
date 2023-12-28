@@ -3,3 +3,5 @@ wandb
 *personal*
 .vscode
 .venv
+.envrc
+out

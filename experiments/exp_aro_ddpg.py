@@ -1,14 +1,14 @@
 import argparse
 
 import gymnasium
-import wandb
 
+import wandb
 from average_reward_drl import ARO_DDPG
 
 
 def run_experiment():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--project", type=str, default="average_reward_drl")
+    parser.add_argument("--project", type=str, default="average-reward-drl")
     parser.add_argument("--group", type=str, default=None)
     parser.add_argument("--env_id", type=str, default="Swimmer-v4")
     parser.add_argument("--seed", type=int, default=0)

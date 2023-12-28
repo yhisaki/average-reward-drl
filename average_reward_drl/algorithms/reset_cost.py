@@ -1,7 +1,7 @@
 import contextlib
 import copy
 from abc import ABCMeta, abstractmethod
-from typing import Any, Union
+from typing import Any, Callable, Union
 
 import numpy as np
 import torch
@@ -13,9 +13,6 @@ from average_reward_drl.algorithm import AlgorithmBase
 from average_reward_drl.modules import ConcatStateAction
 from average_reward_drl.replay_buffer import Batch, ReplayBuffer
 from average_reward_drl.utils import polyak_update
-
-
-from typing import Callable
 
 
 def get_reset_cost_network(dim_state: int, dim_action: int):
