@@ -221,14 +221,25 @@ files = [
 ]
 
 [[package]]
+name = "decorator"
+version = "4.4.2"
+description = "Decorators for Humans"
+optional = false
+python-versions = ">=2.6, !=3.0.*, !=3.1.*"
+files = [
+    {file = "decorator-4.4.2-py2.py3-none-any.whl", hash = "sha256:41fa54c2a0cc4ba648be4fd43cff00aedf5b9465c9bf18d64325bc225f08f760"},
+    {file = "decorator-4.4.2.tar.gz", hash = "sha256:e3a62f0520172440ca0dcc823749319382e377f37f140a0b99ef45fecb84bfe7"},
+]
+
+[[package]]
 name = "dm-control"
-version = "1.0.16"
+version = "1.0.12"
 description = "Continuous control environments and MuJoCo Python bindings."
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.7"
 files = [
-    {file = "dm_control-1.0.16-py3-none-any.whl", hash = "sha256:341f582e26d88556ac0dd1963e11c25f93ef6649b07c75d04570a7de3edebd1b"},
-    {file = "dm_control-1.0.16.tar.gz", hash = "sha256:bbdd6dc54b4dbc33eef6c43294edb0a927c3a5f35621e698480f88f55f48a1fd"},
+    {file = "dm_control-1.0.12-py3-none-any.whl", hash = "sha256:419f8e16418b55caa4b67280cd89da86f587cd21eedeeafa3b2ee4e2b14cba5d"},
+    {file = "dm_control-1.0.12.tar.gz", hash = "sha256:ec337f64fe227279472cc5225938cbdd53094d4b2d70c7026339dba4006fa8ed"},
 ]
 
 [package.dependencies]
@@ -238,7 +249,7 @@ dm-tree = "!=0.1.2"
 glfw = "*"
 labmaze = "*"
 lxml = "*"
-mujoco = ">=3.1.1"
+mujoco = ">=2.3.4"
 numpy = ">=1.9.0"
 protobuf = ">=3.19.4"
 pyopengl = ">=3.1.4"
@@ -328,43 +339,6 @@ files = [
 
 [package.dependencies]
 six = ">=1.4.0"
-
-[[package]]
-name = "etils"
-version = "1.5.2"
-description = "Collection of common python utils"
-optional = false
-python-versions = ">=3.9"
-files = [
-    {file = "etils-1.5.2-py3-none-any.whl", hash = "sha256:6dc882d355e1e98a5d1a148d6323679dc47c9a5792939b9de72615aa4737eb0b"},
-    {file = "etils-1.5.2.tar.gz", hash = "sha256:ba6a3e1aff95c769130776aa176c11540637f5dd881f3b79172a5149b6b1c446"},
-]
-
-[package.dependencies]
-fsspec = {version = "*", optional = true, markers = "extra == \"epath\""}
-importlib_resources = {version = "*", optional = true, markers = "extra == \"epath\""}
-typing_extensions = {version = "*", optional = true, markers = "extra == \"epy\""}
-zipp = {version = "*", optional = true, markers = "extra == \"epath\""}
-
-[package.extras]
-all = ["etils[array-types]", "etils[eapp]", "etils[ecolab]", "etils[edc]", "etils[enp]", "etils[epath-gcs]", "etils[epath-s3]", "etils[epath]", "etils[epy]", "etils[etqdm]", "etils[etree-dm]", "etils[etree-jax]", "etils[etree-tf]", "etils[etree]"]
-array-types = ["etils[enp]"]
-dev = ["chex", "dataclass_array", "optree", "pyink", "pylint (>=2.6.0)", "pytest", "pytest-subtests", "pytest-xdist", "torch"]
-docs = ["etils[all,dev]", "sphinx-apitree[ext]"]
-eapp = ["absl-py", "etils[epy]", "simple_parsing"]
-ecolab = ["etils[enp]", "etils[epy]", "jupyter", "mediapy", "numpy", "packaging"]
-edc = ["etils[epy]"]
-enp = ["etils[epy]", "numpy"]
-epath = ["etils[epy]", "fsspec", "importlib_resources", "typing_extensions", "zipp"]
-epath-gcs = ["etils[epath]", "gcsfs"]
-epath-s3 = ["etils[epath]", "s3fs"]
-epy = ["typing_extensions"]
-etqdm = ["absl-py", "etils[epy]", "tqdm"]
-etree = ["etils[array-types]", "etils[enp]", "etils[epy]", "etils[etqdm]"]
-etree-dm = ["dm-tree", "etils[etree]"]
-etree-jax = ["etils[etree]", "jax[cpu]"]
-etree-tf = ["etils[etree]", "tensorflow"]
-lazy-imports = ["etils[ecolab]"]
 
 [[package]]
 name = "farama-notifications"
@@ -557,18 +531,18 @@ files = [
 
 [[package]]
 name = "imageio"
-version = "2.32.0"
+version = "2.33.1"
 description = "Library for reading and writing a wide range of image, video, scientific, and volumetric data formats."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "imageio-2.32.0-py3-none-any.whl", hash = "sha256:70e63a8955fb08242c9cbc4cdc40728ab892f76955b99cc6a0c5f304b4b84970"},
-    {file = "imageio-2.32.0.tar.gz", hash = "sha256:e425ad36c605308d9ea6d93eda7b0987926059b8b86220e142a599a7975128dd"},
+    {file = "imageio-2.33.1-py3-none-any.whl", hash = "sha256:c5094c48ccf6b2e6da8b4061cd95e1209380afafcbeae4a4e280938cce227e1d"},
+    {file = "imageio-2.33.1.tar.gz", hash = "sha256:78722d40b137bd98f5ec7312119f8aea9ad2049f76f434748eb306b6937cc1ce"},
 ]
 
 [package.dependencies]
 numpy = "*"
-pillow = ">=8.3.2,<10.1.0"
+pillow = ">=8.3.2"
 
 [package.extras]
 all-plugins = ["astropy", "av", "imageio-ffmpeg", "pillow-heif", "psutil", "tifffile"]
@@ -580,27 +554,30 @@ ffmpeg = ["imageio-ffmpeg", "psutil"]
 fits = ["astropy"]
 full = ["astropy", "av", "black", "flake8", "fsspec[github]", "gdal", "imageio-ffmpeg", "itk", "numpydoc", "pillow-heif", "psutil", "pydata-sphinx-theme", "pytest", "pytest-cov", "sphinx (<6)", "tifffile", "wheel"]
 gdal = ["gdal"]
-heif = ["pillow-heif"]
 itk = ["itk"]
 linting = ["black", "flake8"]
+pillow-heif = ["pillow-heif"]
 pyav = ["av"]
 test = ["fsspec[github]", "pytest", "pytest-cov"]
 tifffile = ["tifffile"]
 
 [[package]]
-name = "importlib-resources"
-version = "6.1.1"
-description = "Read resources from Python packages"
+name = "imageio-ffmpeg"
+version = "0.4.9"
+description = "FFMPEG wrapper for Python"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.5"
 files = [
-    {file = "importlib_resources-6.1.1-py3-none-any.whl", hash = "sha256:e8bf90d8213b486f428c9c39714b920041cb02c184686a3dee24905aaa8105d6"},
-    {file = "importlib_resources-6.1.1.tar.gz", hash = "sha256:3893a00122eafde6894c59914446a512f728a0c1a45f9bb9b63721b6bacf0b4a"},
+    {file = "imageio-ffmpeg-0.4.9.tar.gz", hash = "sha256:39bcd1660118ef360fa4047456501071364661aa9d9021d3d26c58f1ee2081f5"},
+    {file = "imageio_ffmpeg-0.4.9-py3-none-macosx_10_9_intel.macosx_10_9_x86_64.macosx_10_10_intel.macosx_10_10_x86_64.whl", hash = "sha256:24095e882a126a0d217197b86265f821b4bb3cf9004104f67c1384a2b4b49168"},
+    {file = "imageio_ffmpeg-0.4.9-py3-none-manylinux2010_x86_64.whl", hash = "sha256:2996c64af3e5489227096580269317719ea1a8121d207f2e28d6c24ebc4a253e"},
+    {file = "imageio_ffmpeg-0.4.9-py3-none-manylinux2014_aarch64.whl", hash = "sha256:7eead662d2f46d748c0ab446b68f423eb63d2b54d0a8ef96f80607245540866d"},
+    {file = "imageio_ffmpeg-0.4.9-py3-none-win32.whl", hash = "sha256:b6de1e18911687c538d5585d8287ab1a23624ca9dc2044fcc4607de667bcf11e"},
+    {file = "imageio_ffmpeg-0.4.9-py3-none-win_amd64.whl", hash = "sha256:7e900c695c6541b1cb17feb1baacd4009b30a53a45b81c23d53a67ab13ffb766"},
 ]
 
-[package.extras]
-docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (<7.2.5)", "sphinx (>=3.5)", "sphinx-lint"]
-testing = ["pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-mypy (>=0.9.1)", "pytest-ruff", "zipp (>=3.17)"]
+[package.dependencies]
+setuptools = "*"
 
 [[package]]
 name = "isort"
@@ -869,6 +846,30 @@ files = [
 ]
 
 [[package]]
+name = "moviepy"
+version = "1.0.3"
+description = "Video editing with Python"
+optional = false
+python-versions = "*"
+files = [
+    {file = "moviepy-1.0.3.tar.gz", hash = "sha256:2884e35d1788077db3ff89e763c5ba7bfddbd7ae9108c9bc809e7ba58fa433f5"},
+]
+
+[package.dependencies]
+decorator = ">=4.0.2,<5.0"
+imageio = {version = ">=2.5,<3.0", markers = "python_version >= \"3.4\""}
+imageio_ffmpeg = {version = ">=0.2.0", markers = "python_version >= \"3.4\""}
+numpy = {version = ">=1.17.3", markers = "python_version > \"2.7\""}
+proglog = "<=1.0.0"
+requests = ">=2.8.1,<3.0"
+tqdm = ">=4.11.2,<5.0"
+
+[package.extras]
+doc = ["Sphinx (>=1.5.2,<2.0)", "numpydoc (>=0.6.0,<1.0)", "pygame (>=1.9.3,<2.0)", "sphinx_rtd_theme (>=0.1.10b0,<1.0)"]
+optional = ["matplotlib (>=2.0.0,<3.0)", "opencv-python (>=3.0,<4.0)", "scikit-image (>=0.13.0,<1.0)", "scikit-learn", "scipy (>=0.19.0,<1.5)", "youtube_dl"]
+test = ["coverage (<5.0)", "coveralls (>=1.1,<2.0)", "pytest (>=3.0.0,<4.0)", "pytest-cov (>=2.5.1,<3.0)", "requests (>=2.8.1,<3.0)"]
+
+[[package]]
 name = "mpmath"
 version = "1.3.0"
 description = "Python library for arbitrary-precision floating-point arithmetic"
@@ -887,42 +888,40 @@ tests = ["pytest (>=4.6)"]
 
 [[package]]
 name = "mujoco"
-version = "3.1.1"
+version = "2.3.4"
 description = "MuJoCo Physics Simulator"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.7"
 files = [
-    {file = "mujoco-3.1.1-cp310-cp310-macosx_10_16_x86_64.whl", hash = "sha256:be7aa04f8c91bc77fea6574c80154e62973fda0a959a6add4c9bc426db0ea9de"},
-    {file = "mujoco-3.1.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:e35a60ade27b8e074ad7f08496e4a9101da9d358401bcbb08610dcf5066c3622"},
-    {file = "mujoco-3.1.1-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f450b46802fca047e2d19ce8adefa9f4a1787273a27511d76ef717eafaf18d8b"},
-    {file = "mujoco-3.1.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:51ac0f9df06e612ee628c571bab0320dc7721b7732e8c025a2289fda17f98a47"},
-    {file = "mujoco-3.1.1-cp310-cp310-win_amd64.whl", hash = "sha256:d78a07fd18ae82a4cd4628e062fff1224220a7d86749c02170a0ea8e356c7442"},
-    {file = "mujoco-3.1.1-cp311-cp311-macosx_10_16_x86_64.whl", hash = "sha256:34a61d8c1631aa6d85252b04b01fdc98bf7d6829e1aab08182069f29af02617e"},
-    {file = "mujoco-3.1.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:34f2b63b9f7e76b10a9a82d085d2637ecccf6f2b2df177d7bc3d16b6857af861"},
-    {file = "mujoco-3.1.1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:537e6ca9b0896865a8c30da6060b158299450776cd8e5796fd23c1fc54d26aa5"},
-    {file = "mujoco-3.1.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3aee8a9af27f5443a0c6fc09dd2384ebb3e2774928fda7213ca9809e552e0010"},
-    {file = "mujoco-3.1.1-cp311-cp311-win_amd64.whl", hash = "sha256:431fdb51194f5a6dc1b3c2d625410d7468c40ec1091ac4e4e23081ace47d9a15"},
-    {file = "mujoco-3.1.1-cp312-cp312-macosx_10_16_x86_64.whl", hash = "sha256:53ca08b1af724104ceeb307b47131e5f244ebb35ff5b5b38cf4f5f3b6b662b9f"},
-    {file = "mujoco-3.1.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:f5e6502c1ba6902c276d384fe7dee8a99ca570ef187dc122c60692baf0f068cb"},
-    {file = "mujoco-3.1.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:267458ff744cb1a2265ce2cf3f81ecb096883b2003a647de2d9177bb606514bb"},
-    {file = "mujoco-3.1.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5731c8e6efb739312ece205fa6932d76e8d6ecd78a19c78da58e58b2abe5b591"},
-    {file = "mujoco-3.1.1-cp312-cp312-win_amd64.whl", hash = "sha256:0037ea34af70a5553cf516027e76d3f91b13389a4b01679d5d77d8ea0bc4aaf7"},
-    {file = "mujoco-3.1.1-cp38-cp38-macosx_10_16_x86_64.whl", hash = "sha256:70a440463d7ec272085a16057115bd3e2c74c4e91773f4fc809a40edca2b4546"},
-    {file = "mujoco-3.1.1-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:b2f471410896a23a0325b240ab535ea6ba170af1a044ff82f6ac34fb5e17f7d6"},
-    {file = "mujoco-3.1.1-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:50930f8bddb81f23b7c01d2beee9b01bb52827f0413c53dd2ff0b0220688e4a3"},
-    {file = "mujoco-3.1.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:31aa58202baeafa9f95dac65dc19c7c04b6b5079eaed65113c66235d08a49a98"},
-    {file = "mujoco-3.1.1-cp38-cp38-win_amd64.whl", hash = "sha256:d867792d0ca21720337e17e9dda67ada16d03bdc2c300082140aca7d1a2d01f0"},
-    {file = "mujoco-3.1.1-cp39-cp39-macosx_10_16_x86_64.whl", hash = "sha256:f9d2e6e3cd857662e1eac7b7ff68074b329ab99bda9c0a5020e2aeb242db00e1"},
-    {file = "mujoco-3.1.1-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:ec29474314726a71f60ed2fa519a9f8df332ae23b638368a7833c851ce0fe500"},
-    {file = "mujoco-3.1.1-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:3195aa1bfb96cfce4aaf116baf8b74aee7e479cb3c2427ede4d6f9ad91f7c107"},
-    {file = "mujoco-3.1.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:fd0ebcfc7f4771aeedb5e66321c00e9c8c4393834722385b4a23401f1eee3e8f"},
-    {file = "mujoco-3.1.1-cp39-cp39-win_amd64.whl", hash = "sha256:0e76ebd3030aa32fd755e4ec0c1db069ad0a0fb86184b80c12fe5f2ef822bc56"},
-    {file = "mujoco-3.1.1.tar.gz", hash = "sha256:1121273de2fbf4ed309e5944a3db39d01f385b220d20e78c460ec4efc06945b3"},
+    {file = "mujoco-2.3.4-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:ea4531f4c1702dc93cd4a3a32932cb3f164ea0cadd85b9afbe9afc7ca642d0d7"},
+    {file = "mujoco-2.3.4-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:cfad59d9bc5236d3276da7dce57005140e06ab3ec221386099d104fc91e44d38"},
+    {file = "mujoco-2.3.4-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:0b283afbdd7359b1d398433384b03b02264751f6a53fb064cdf4a82a9c695601"},
+    {file = "mujoco-2.3.4-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c42d7ff9deebbb3897a54a67aa16986987089c9b3301f79d6932f1f7c76f154b"},
+    {file = "mujoco-2.3.4-cp310-cp310-win_amd64.whl", hash = "sha256:c66b9236e2ffe052bd2c507b86e3f06cf501c9bd6f43cfa5132b71a87514d55c"},
+    {file = "mujoco-2.3.4-cp311-cp311-macosx_10_12_x86_64.whl", hash = "sha256:13671a5e77fad9ee90c6a12e889e42c083ce0860aa31050d84c53dba43a4ff33"},
+    {file = "mujoco-2.3.4-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:985ce74d4b6e3edcca210377a9dd06621fd74b0526baee3609dbb5cddc254ba6"},
+    {file = "mujoco-2.3.4-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ca88a250bc29b37e29b57739d943a4ee953b6d32241c63988cd9e7b9be6694b8"},
+    {file = "mujoco-2.3.4-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:47b6bd56ce4274b328fdff5ad98e14417b52552d07b18607e44853fdd890e44c"},
+    {file = "mujoco-2.3.4-cp311-cp311-win_amd64.whl", hash = "sha256:c1cdac2c87b4f76701e7c742bd0472d3eac8a308bfb0edaf1623a78d57ddc416"},
+    {file = "mujoco-2.3.4-cp37-cp37m-macosx_10_12_x86_64.whl", hash = "sha256:e16c5e16633e80675c34006e486d9ebe954564850a98e7b0003b5567bbdbcece"},
+    {file = "mujoco-2.3.4-cp37-cp37m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:8a3816bb7f6616d8e3550cda972d271d8b0279c123c0044cfb36b2d73748754f"},
+    {file = "mujoco-2.3.4-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e1650152c9f2ef85ccdfde25d13f74f650958d8d78e97e280a2a72b1b7e12bec"},
+    {file = "mujoco-2.3.4-cp37-cp37m-win_amd64.whl", hash = "sha256:e343c75ab9e7b404cc0eb6a1f59ec2ef119d46cced162295873df70d2a23a689"},
+    {file = "mujoco-2.3.4-cp38-cp38-macosx_10_12_x86_64.whl", hash = "sha256:06c171783751bcff586abfa39f8dc3e6e2fa66e62be3379f7d75ef5269469d17"},
+    {file = "mujoco-2.3.4-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:f263fd88e4e899bc561051af7fbc3f78b33bdaf7c5af596214ca6579c03291ce"},
+    {file = "mujoco-2.3.4-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:d476afdefee0ca1e5099bc6c3aac9599f9b06f91acfa32dd2e9d564e70ea4c95"},
+    {file = "mujoco-2.3.4-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:57019e78c977029daeccd8ad279cbe158eca7f9d642adcb0503facbce4bd484b"},
+    {file = "mujoco-2.3.4-cp38-cp38-win_amd64.whl", hash = "sha256:b47f82dfb338dc132448a64cc425c21d3b1825a44e388d9b9dc57a38f16e1ea8"},
+    {file = "mujoco-2.3.4-cp39-cp39-macosx_10_12_x86_64.whl", hash = "sha256:a5fd885feddfcb9f1f2affcb1470f441f5210bacb15bfa64ea34e2d876128f15"},
+    {file = "mujoco-2.3.4-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:c3852d8af89886888e4305c2e8f7ffb22ea4c693d415c7a79c47248d222b6bd2"},
+    {file = "mujoco-2.3.4-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:11804281bebd20970798f1a10f9bc9a21903765dbaa777b5f268ba42f45a1f75"},
+    {file = "mujoco-2.3.4-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5d2d89b9bd25ee73dd13bdf6f07344802c21a48859bd561891278c1c558007b6"},
+    {file = "mujoco-2.3.4-cp39-cp39-win_amd64.whl", hash = "sha256:fd7f7fa9601409aee24422bb97c9d74a247dfe93801fa3d1d4b9710898ef12b0"},
+    {file = "mujoco-2.3.4.tar.gz", hash = "sha256:c226e9dc698156d4cc9927eee77140d94e53a6cf7d67a10bd8db17a9470758d1"},
 ]
 
 [package.dependencies]
 absl-py = "*"
-etils = {version = "*", extras = ["epath"]}
 glfw = "*"
 numpy = "*"
 pyopengl = "*"
@@ -1118,6 +1117,20 @@ files = [
 [package.extras]
 docs = ["furo (>=2023.7.26)", "proselint (>=0.13)", "sphinx (>=7.1.1)", "sphinx-autodoc-typehints (>=1.24)"]
 test = ["appdirs (==1.4.4)", "covdefaults (>=2.3)", "pytest (>=7.4)", "pytest-cov (>=4.1)", "pytest-mock (>=3.11.1)"]
+
+[[package]]
+name = "proglog"
+version = "0.1.10"
+description = "Log and progress bar manager for console, notebooks, web..."
+optional = false
+python-versions = "*"
+files = [
+    {file = "proglog-0.1.10-py3-none-any.whl", hash = "sha256:19d5da037e8c813da480b741e3fa71fb1ac0a5b02bf21c41577c7f327485ec50"},
+    {file = "proglog-0.1.10.tar.gz", hash = "sha256:658c28c9c82e4caeb2f25f488fff9ceace22f8d69b15d0c1c86d64275e4ddab4"},
+]
+
+[package.dependencies]
+tqdm = "*"
 
 [[package]]
 name = "protobuf"
@@ -1690,22 +1703,7 @@ nexus = ["wandb-core (>=0.16.0b1)"]
 perf = ["orjson"]
 sweeps = ["sweeps (>=0.2.0)"]
 
-[[package]]
-name = "zipp"
-version = "3.17.0"
-description = "Backport of pathlib-compatible object wrapper for zip files"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "zipp-3.17.0-py3-none-any.whl", hash = "sha256:0e923e726174922dce09c53c59ad483ff7bbb8e572e00c7f7c46b88556409f31"},
-    {file = "zipp-3.17.0.tar.gz", hash = "sha256:84e64a1c28cf7e91ed2078bb8cc8c259cb19b76942096c8d7b84947690cabaf0"},
-]
-
-[package.extras]
-docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (<7.2.5)", "sphinx (>=3.5)", "sphinx-lint"]
-testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy (>=0.9.1)", "pytest-ruff"]
-
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "c2e35e9199ae188323dfb34b4500abc7b8c97aef0d639c990c359d960acff0d6"
+content-hash = "aee15ef0fd04c6e020c01fe4cf6ef991f7cb99acec7f4e1fa08fe5e64df06f1d"

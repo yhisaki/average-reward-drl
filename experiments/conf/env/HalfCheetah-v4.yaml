@@ -1,0 +1,5 @@
+defaults:
+  - default_gymnasium
+
+id: HalfCheetah-v4
+has_termination: false

@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Union
+from typing import Union
 
 import numpy as np
 import torch
@@ -33,7 +33,7 @@ class RVI_SAC(AlgorithmBase):
         replay_start_size: int = 10**4,
         tau: float = 0.005,
         rho_update_tau: float = 1e-2,
-        use_reset: bool = True,
+        use_reset_scheme: bool = True,
         device: Union[str, torch.device] = torch.device(
             "cuda:0" if cuda.is_available() else "cpu"
         ),
@@ -86,14 +86,14 @@ class RVI_SAC(AlgorithmBase):
         self.reset_cost_optimizer = Adam(self.reset_cost.parameters(), lr=lr)
         self.target_reset_prob = target_reset_prob
 
-        self.use_reset = use_reset
+        self.use_reset_scheme = use_reset_scheme
 
         # define optimizers
         self.critic_optimizer = Adam(self.critic.parameters(), lr=lr)
         self.policy_optimizer = Adam(self.actor.parameters(), lr=lr)
 
         # define temperature
-        self.temperature = ScalarHolder(value=1.0, transform_fn=torch.exp).to(device)
+        self.temperature = ScalarHolder(value=0.0, transform_fn=torch.exp).to(device)
         self.temperature_optimizer = Adam(self.temperature.parameters(), lr=lr)
 
         # define replay buffer
@@ -129,7 +129,7 @@ class RVI_SAC(AlgorithmBase):
 
         return action
 
-    def update_if_dataset_is_ready(self) -> Any:
+    def update_if_dataset_is_ready(self):
         assert self.training
         self.just_updated = False
         if len(self.replay_buffer) >= self.replay_start_size:
@@ -150,8 +150,8 @@ class RVI_SAC(AlgorithmBase):
                 (batch.next_state.repeat(4, 1, 1), next_action.repeat(4, 1, 1))
             )
 
-            next_q = torch.min(next_q1, next_q2).flatten()
-            next_q_reset = torch.min(next_q1_reset, next_q2_reset).flatten()
+            next_q = torch.flatten(torch.min(next_q1, next_q2))
+            next_q_reset = torch.flatten(torch.min(next_q1_reset, next_q2_reset))
 
             entropy_term = self.temperature() * next_log_prob
 
@@ -206,7 +206,7 @@ class RVI_SAC(AlgorithmBase):
             (batch.state.repeat(4, 1, 1), action.repeat(4, 1, 1))
         )
 
-        q = torch.min(q1, q2) + self.use_reset * float(reset_cost) * torch.min(
+        q = torch.min(q1, q2) + self.use_reset_scheme * float(reset_cost) * torch.min(
             q1_reset, q2_reset
         )
         # q = torch.min(q1, q2)

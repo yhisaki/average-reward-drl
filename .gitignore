@@ -5,3 +5,6 @@ wandb
 .venv
 .envrc
 out
+outputs
+tmp
+multirun

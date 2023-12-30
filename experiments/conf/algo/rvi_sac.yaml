@@ -1,0 +1,11 @@
+id: RVI_SAC
+name: ${algo.id}
+params:
+  batch_size: 256
+  lr: 0.0003
+  replay_buffer_capacity: 1000000
+  replay_start_size: 10000
+  tau: 0.005
+  rho_update_tau: 0.01
+  target_reset_prob: 0.001
+  use_reset_scheme: ${env.has_termination}

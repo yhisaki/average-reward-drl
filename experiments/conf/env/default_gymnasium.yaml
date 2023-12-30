@@ -1,0 +1,8 @@
+type: gymnasium
+id: ???
+name: ${env.id}
+has_termination: true
+train:
+  max_episode_steps: 1000
+eval:
+  max_episode_steps: 1000

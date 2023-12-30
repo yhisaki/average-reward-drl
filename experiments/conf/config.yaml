@@ -1,0 +1,13 @@
+defaults:
+  - _self_
+  - algo: rvi_sac
+  - env: Walker2d-v4
+
+project: average-reward-drl
+group: ${algo.name}-${env.name}
+tags: ["${algo.name}", "${env.name}"]
+seed: 0
+total_steps: 1000000
+eval_episodes: 10
+log_interval: 5000
+use_reset_scheme: ${env.has_termination}

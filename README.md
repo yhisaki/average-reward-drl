@@ -16,15 +16,34 @@ poetry install
 
 ## Implemented Algorithms
 
-- [ ] (proposal) RVI-SAC
-- [ ] [Soft Actor-Critic](https://arxiv.org/abs/1801.01290) (Original Implementation: [here]())
+- [x] (proposal) RVI-SAC
+- [x] [Soft Actor-Critic](https://arxiv.org/abs/1801.01290) (Original Implementation: [here]())
 - [x] [ARO-DDPG](https://arxiv.org/abs/2305.12239) (Original Implementation: [here](https://github.com/namansaxena9/ARO-DDPG))
 - [ ] [ATRPO](https://arxiv.org/abs/2305.12239)
 
 ## Running the Code
+
+### RVI-SAC
+
+- gymnasium
+
+  ```bash
+  poetry run python3 experiments/gymnasium/exp_rvi_sac.py env_id=Walker2d-v4
+  ```
+
+- dm_control
+
+  ```bash
+  poetry run python3 experiments/gymnasium/exp_rvi_sac.py env_id=walker_walk
+  ```
+
+### SAC
+
 
 ### ARO-DDPG
 
 ```bash
 poetry run python3 experiments/aro_ddpg.py
 ```
+
+## Results

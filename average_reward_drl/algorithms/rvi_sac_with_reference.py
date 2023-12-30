@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Union, Tuple
+from typing import Any, Tuple, Union
 
 import numpy as np
 import torch
@@ -10,13 +10,10 @@ from torch.optim import Adam
 
 from average_reward_drl.algorithm import AlgorithmBase
 from average_reward_drl.logger import Logger
-from average_reward_drl.modules import (
-    ConcatStateAction,
-    MultiLinear,
-    ScalarHolder,
-    SquashedDiagonalGaussianHead,
-    ortho_init,
-)
+from average_reward_drl.modules import (ConcatStateAction, MultiLinear,
+                                        ScalarHolder,
+                                        SquashedDiagonalGaussianHead,
+                                        ortho_init)
 from average_reward_drl.replay_buffer import Batch, ReplayBuffer
 from average_reward_drl.utils import polyak_update
 
@@ -34,7 +31,7 @@ class RVI_SAC_WITH_REFERENCE(AlgorithmBase):
         replay_start_size: int = 10**4,
         tau: float = 0.005,
         rho_update_tau: float = 1e-2,
-        use_reset: bool = True,
+        use_reset_scheme: bool = True,
         device: Union[str, torch.device] = torch.device(
             "cuda:0" if cuda.is_available() else "cpu"
         ),
@@ -83,14 +80,14 @@ class RVI_SAC_WITH_REFERENCE(AlgorithmBase):
         self.reset_cost_optimizer = Adam(self.reset_cost.parameters(), lr=lr)
         self.target_reset_prob = target_reset_prob
 
-        self.use_reset = use_reset
+        self.use_reset_scheme = use_reset_scheme
 
         # define optimizers
         self.critic_optimizer = Adam(self.critic.parameters(), lr=lr)
         self.policy_optimizer = Adam(self.actor.parameters(), lr=lr)
 
         # define temperature
-        self.temperature = ScalarHolder(value=1.0, transform_fn=torch.exp).to(device)
+        self.temperature = ScalarHolder(value=0.0, transform_fn=torch.exp).to(device)
         self.temperature_optimizer = Adam(self.temperature.parameters(), lr=lr)
 
         # define replay buffer
@@ -151,15 +148,15 @@ class RVI_SAC_WITH_REFERENCE(AlgorithmBase):
             next_q = torch.min(next_q1, next_q2).flatten()
             next_q_reset = torch.min(next_q1_reset, next_q2_reset).flatten()
 
+            reference_state, reference_action = self.reference
+            # reference_q1, reference_q2, reference_q1_reset, reference_q2_reset = self.critic_target(
+
             entropy_term = self.temperature() * next_log_prob
 
             reset = -batch.terminated.float()
 
             target_q = batch.reward - self.rho + (next_q - entropy_term)
             target_q_reset = reset - self.rho_reset + (next_q_reset)
-
-            target_rho = torch.mean(next_q - entropy_term)
-            target_rho_reset = torch.mean(next_q_reset)
 
         q1_pred, q2_pred, q1_reset_pred, q2_reset_pred = self.critic(
             (batch.state.repeat(4, 1, 1), batch.action.repeat(4, 1, 1))
@@ -197,7 +194,7 @@ class RVI_SAC_WITH_REFERENCE(AlgorithmBase):
             (batch.state.repeat(4, 1, 1), action.repeat(4, 1, 1))
         )
 
-        q = torch.min(q1, q2) + self.use_reset * float(reset_cost) * torch.min(
+        q = torch.min(q1, q2) + self.use_reset_scheme * float(reset_cost) * torch.min(
             q1_reset, q2_reset
         )
         # q = torch.min(q1, q2)

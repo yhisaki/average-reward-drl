@@ -1,5 +1,0 @@
-default:
-  wandb:
-    project: rvi_sac
-    group: none
-    tags: []

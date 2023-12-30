@@ -44,9 +44,10 @@ class SAC(AlgorithmBase):
 
         # define networks
         hidden_dim = 256
-        num_parallel = 2
+        num_parallel = 4
         init_gain = np.sqrt(1.0 / 3.0)
 
+        # critic
         self.critic = nn.Sequential(
             ConcatStateAction(),
             ortho_init(
@@ -77,7 +78,7 @@ class SAC(AlgorithmBase):
         self.policy_optimizer = Adam(self.actor.parameters(), lr=lr)
 
         # define temperature
-        self.temperature = ScalarHolder(value=1.0, transform_fn=torch.exp).to(device)
+        self.temperature = ScalarHolder(value=0.0, transform_fn=torch.exp).to(device)
         self.temperature_optimizer = Adam(self.temperature.parameters(), lr=lr)
 
         # define replay buffer

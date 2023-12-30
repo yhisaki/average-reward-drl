@@ -1,0 +1,11 @@
+type: dm_control
+domain_name: ???
+task_name: ???
+name: ${env.domain_name}-${env.task_name}
+has_termination: false
+train:
+  time_limit: float('inf')
+  control_timestep: None
+eval:
+  time_limit: float('inf')
+  control_timestep: None

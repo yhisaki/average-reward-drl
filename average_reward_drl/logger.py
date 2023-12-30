@@ -11,7 +11,7 @@ class Logger(object):
             self._logs[key] = []
         self._logs[key].append(value)
 
-    def flush(self) -> None:
+    def flush(self) -> dict:
         data = {k: mean(v) for k, v in self._logs.items()}
         self._logs = {}
         return data

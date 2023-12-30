@@ -4,7 +4,9 @@ from typing import Callable, Iterable, Optional
 import gymnasium
 import numpy as np
 import torch
-from dm_control.rl.control import Environment
+from dm_control.rl.control import Environment as DMControlEnvironment
+
+RANDOM = None
 
 
 def fix_seed(
@@ -21,6 +23,7 @@ def fix_seed(
         random_seed (int, optional): Seed for random.
         np_seed (int, optional): Seed for numpy.
     """
+    global RANDOM
     if seed is None:
         return
     torch.manual_seed(seed if torch_seed is None else torch_seed)
@@ -29,6 +32,17 @@ def fix_seed(
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
     gymnasium.Env._np_random, _ = gymnasium.utils.seeding.np_random(seed)
+
+    RANDOM = np.random.RandomState(seed)
+
+
+def get_random_state() -> np.random.RandomState:
+    """Get the random state of the random number generators.
+
+    Returns:
+        np.random.RandomState: Random state of the random number generators.
+    """
+    return RANDOM
 
 
 def polyak_update(
@@ -52,7 +66,7 @@ def polyak_update(
 ActorFunc = Callable[[np.ndarray], np.ndarray]
 
 
-def eval_actor_gymnasium(env: gymnasium.Env, actor: ActorFunc, num_episodes: int = 10):
+def eval_actor(env: gymnasium.Env, actor: ActorFunc, num_episodes: int = 10):
     reward_sums = []
     step_per_episodes = []
 
@@ -80,7 +94,9 @@ def eval_actor_gymnasium(env: gymnasium.Env, actor: ActorFunc, num_episodes: int
     return np.mean(reward_sums), np.mean(step_per_episodes)
 
 
-def eval_actor_dm_control(env: Environment, actor: ActorFunc, num_episodes: int = 10):
+def eval_actor_dm_control(
+    env: DMControlEnvironment, actor: ActorFunc, num_episodes: int = 10
+):
     reward_sums = []
     step_per_episodes = []
 

@@ -7,20 +7,22 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-gymnasium = {extras = ["mujoco"], version = "^0.29.1"}
+gymnasium = { extras = ["mujoco"], version = "^0.29.1" }
 hydra-core = "^1.3.2"
 wandb = "^0.15.12"
-torch = {version = "^2.1.0+cu121", source = "pytorch"}
+torch = { version = "^2.1.0+cu121", source = "pytorch" }
 colorama = "^0.4.6"
-dm-control = "^1.0.16"
+dm-control = "1.0.12"
 tqdm = "^4.66.1"
+moviepy = "^1.0.3"
+imageio = "^2.33.1"
+mujoco = "2.3.4"
 
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "^6.1.0"
 isort = "^5.12.0"
 black = "^23.9.1"
-
 
 
 [[tool.poetry.source]]
