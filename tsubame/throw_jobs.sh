@@ -6,6 +6,9 @@
 #$ -l h_rt=08:00:00
 #$ -t 1:10
 
+. /etc/profile.d/modules.sh
+. $HOME/.bash_profile
+
 module load python/3.10.2 cuda/12.1.0 cudnn/8.8.1
 
 ENV_ID=Walker2d-v4
