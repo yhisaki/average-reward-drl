@@ -1,4 +1,5 @@
 id: SAC
+name: ${algo.id}
 params:
   gamma: 0.99
   batch_size: 256
@@ -6,3 +7,4 @@ params:
   replay_buffer_capacity: 1000000
   replay_start_size: 10000
   tau: 0.005
+  use_reset_scheme: False

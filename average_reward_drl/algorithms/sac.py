@@ -35,6 +35,7 @@ class SAC(AlgorithmBase):
         device: Union[str, torch.device] = torch.device(
             "cuda:0" if cuda.is_available() else "cpu"
         ),
+        **kwargs,
     ) -> None:
         super().__init__()
 
@@ -44,7 +45,7 @@ class SAC(AlgorithmBase):
 
         # define networks
         hidden_dim = 256
-        num_parallel = 4
+        num_parallel = 2
         init_gain = np.sqrt(1.0 / 3.0)
 
         # critic
@@ -137,7 +138,7 @@ class SAC(AlgorithmBase):
             next_q = torch.flatten(torch.min(next_q1, next_q2))
             entropy_term = self.temperature() * next_log_prob
 
-            target_q = batch.reward + self.gamma * (1.0 - batch.truncated.float()) * (
+            target_q = batch.reward + self.gamma * (1.0 - batch.terminated.float()) * (
                 next_q - entropy_term
             )
 

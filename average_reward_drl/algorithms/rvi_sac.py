@@ -37,6 +37,7 @@ class RVI_SAC(AlgorithmBase):
         device: Union[str, torch.device] = torch.device(
             "cuda:0" if cuda.is_available() else "cpu"
         ),
+        **kwargs,
     ) -> None:
         super().__init__()
 
@@ -188,7 +189,9 @@ class RVI_SAC(AlgorithmBase):
             1 - self.rho_update_tau
         ) * self.rho_reset + self.rho_update_tau * target_rho_reset
 
-        self.logs.log("critic_loss", float(critic_loss))
+        # self.logs.log("critic_loss", float(critic_loss))
+        self.logs.log("q_loss", float(q_loss))
+        self.logs.log("q_reset_loss", float(q_reset_loss))
         self.logs.log("q1_pred", float(q1_pred.mean()))
         self.logs.log("q2_pred", float(q2_pred.mean()))
         self.logs.log("q1_reset_pred", float(q1_reset_pred.mean()))
@@ -206,10 +209,10 @@ class RVI_SAC(AlgorithmBase):
             (batch.state.repeat(4, 1, 1), action.repeat(4, 1, 1))
         )
 
-        q = torch.min(q1, q2) + self.use_reset_scheme * float(reset_cost) * torch.min(
-            q1_reset, q2_reset
-        )
-        # q = torch.min(q1, q2)
+        # q = torch.min(q1, q2) + self.use_reset_scheme * float(0.0) * torch.min(
+        #     q1_reset, q2_reset
+        # )
+        q = torch.min(q1, q2)
         # L(θ) = E_π[α * log π(a|s) - Q(s, a)]
         policy_loss = torch.mean(self.temperature().detach() * log_prob - q.flatten())
 
