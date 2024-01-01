@@ -1,10 +1,11 @@
+from typing import Optional
+
 from dm_control import suite
 from dm_control.rl.control import Environment as DMCEnv
 from gymnasium.core import Env as GymnasiumEnv
 from gymnasium.spaces import Box
 
 from average_reward_drl.utils import get_random_state
-from typing import Optional
 
 
 class DMCWrapper(GymnasiumEnv):

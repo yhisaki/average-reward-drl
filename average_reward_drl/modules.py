@@ -1,6 +1,6 @@
-import math
 from typing import Tuple
 
+import numpy as np
 import torch
 from torch import nn
 from torch.distributions import Normal, TransformedDistribution
@@ -37,6 +37,12 @@ class ScalarHolder(nn.Module):
         return self.transform_fn(self.value)
 
 
+def ortho_init(layer: nn.Linear, gain: float = np.sqrt(1.0 / 3.0)):
+    nn.init.orthogonal_(layer.weight, gain=gain)
+    nn.init.zeros_(layer.bias)
+    return layer
+
+
 class MultiLinear(nn.Module):
     __constants__ = ["in_features", "out_features", "num_parallel"]
 
@@ -71,11 +77,10 @@ class MultiLinear(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self) -> None:
-        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        for i in range(self.num_parallel):
+            nn.init.orthogonal_(self.weight[i], gain=np.sqrt(1.0 / 3.0))
         if self.bias is not None:
-            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
-            bound = 1 / math.sqrt(fan_in)
-            nn.init.uniform_(self.bias, -bound, bound)
+            nn.init.zeros_(self.bias)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         output = input.matmul(self.weight)
@@ -110,9 +115,3 @@ class SquashedDiagonalGaussianHead(nn.Module):
             base_distribution, TanhTransform(cache_size=1)
         )
         return squashed_distribution
-
-
-def ortho_init(layer: nn.Linear, gain: float):
-    nn.init.orthogonal_(layer.weight, gain=gain)
-    nn.init.zeros_(layer.bias)
-    return layer

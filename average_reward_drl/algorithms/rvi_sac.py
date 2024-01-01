@@ -28,7 +28,7 @@ class RVI_SAC(AlgorithmBase):
         dim_action: int,
         target_reset_prob: float = 1e-3,
         lr: float = 3e-4,
-        batch_size: int = 250,
+        batch_size: int = 256,
         replay_buffer_capacity: int = 10**6,
         replay_start_size: int = 10**4,
         tau: float = 0.005,
@@ -47,23 +47,16 @@ class RVI_SAC(AlgorithmBase):
 
         # define networks
         hidden_dim = 256
-        num_parallel = 4
-        init_gain = np.sqrt(1.0 / 3.0)
+        num_parallel = 3
 
         # critic
         self.critic = nn.Sequential(
             ConcatStateAction(),
-            ortho_init(
-                MultiLinear(num_parallel, dim_state + dim_action, hidden_dim),
-                gain=init_gain,
-            ),
+            MultiLinear(num_parallel, dim_state + dim_action, hidden_dim),
             nn.ReLU(),
-            ortho_init(
-                MultiLinear(num_parallel, hidden_dim, hidden_dim),
-                gain=init_gain,
-            ),
+            MultiLinear(num_parallel, hidden_dim, hidden_dim),
             nn.ReLU(),
-            ortho_init(MultiLinear(num_parallel, hidden_dim, 1), gain=init_gain),
+            MultiLinear(num_parallel, hidden_dim, 1),
         ).to(device)
 
         self.critic_target = copy.deepcopy(self.critic).eval().requires_grad_(False)
@@ -75,11 +68,11 @@ class RVI_SAC(AlgorithmBase):
         # actor
         self.actor_gaussian_head = SquashedDiagonalGaussianHead()
         self.actor = nn.Sequential(
-            ortho_init(nn.Linear(dim_state, hidden_dim), gain=np.sqrt(1.0 / 3.0)),
+            ortho_init(nn.Linear(dim_state, hidden_dim)),
             nn.ReLU(),
-            ortho_init(nn.Linear(hidden_dim, hidden_dim), gain=np.sqrt(1.0 / 3.0)),
+            ortho_init(nn.Linear(hidden_dim, hidden_dim)),
             nn.ReLU(),
-            ortho_init(nn.Linear(hidden_dim, dim_action * 2), gain=np.sqrt(1.0 / 3.0)),
+            ortho_init(nn.Linear(hidden_dim, dim_action * 2)),
             self.actor_gaussian_head,
         ).to(device)
 
@@ -147,39 +140,36 @@ class RVI_SAC(AlgorithmBase):
             next_action = next_action_dist.sample()
             next_log_prob = next_action_dist.log_prob(next_action)
 
-            next_q1, next_q2, next_q1_reset, next_q2_reset = self.critic_target(
-                (batch.next_state.repeat(4, 1, 1), next_action.repeat(4, 1, 1))
+            next_q1, next_q2, next_q_reset = self.critic_target(
+                (batch.next_state.repeat(3, 1, 1), next_action.repeat(3, 1, 1))
             )
 
             next_q = torch.flatten(torch.min(next_q1, next_q2))
-            next_q_reset = torch.flatten(torch.min(next_q1_reset, next_q2_reset))
 
             entropy_term = self.temperature() * next_log_prob
 
-            reset = -batch.terminated.float()
+            reset = batch.terminated.float()
+            reward = batch.reward - float(self.reset_cost()) * reset
 
-            target_q = batch.reward - self.rho + (next_q - entropy_term)
-            target_q_reset = reset - self.rho_reset + (next_q_reset)
+            target_q = reward - self.rho + (next_q - entropy_term)
+            target_q_reset = reset - self.rho_reset + torch.flatten(next_q_reset)
 
             target_rho = torch.mean(next_q - entropy_term)
             target_rho_reset = torch.mean(next_q_reset)
 
-        q1_pred, q2_pred, q1_reset_pred, q2_reset_pred = self.critic(
-            (batch.state.repeat(4, 1, 1), batch.action.repeat(4, 1, 1))
+        q1_pred, q2_pred, q1_reset_pred = self.critic(
+            (batch.state.repeat(3, 1, 1), batch.action.repeat(3, 1, 1))
         )
 
-        q_loss = 0.5 * (
+        critic_loss = 0.5 * (
             F.mse_loss(q1_pred.flatten(), target_q)
             + F.mse_loss(q2_pred.flatten(), target_q)
         )
-        q_reset_loss = 0.5 * (
-            F.mse_loss(q1_reset_pred.flatten(), target_q_reset)
-            + F.mse_loss(q2_reset_pred.flatten(), target_q_reset)
-        )
-        critic_loss = q_loss + q_reset_loss
+
+        critic_reset_loss = F.mse_loss(q1_reset_pred.flatten(), target_q_reset)
 
         self.critic_optimizer.zero_grad()
-        critic_loss.backward()
+        (critic_loss + critic_reset_loss).backward()
         self.critic_optimizer.step()
 
         self.rho = (
@@ -189,13 +179,11 @@ class RVI_SAC(AlgorithmBase):
             1 - self.rho_update_tau
         ) * self.rho_reset + self.rho_update_tau * target_rho_reset
 
-        # self.logs.log("critic_loss", float(critic_loss))
-        self.logs.log("q_loss", float(q_loss))
-        self.logs.log("q_reset_loss", float(q_reset_loss))
+        self.logs.log("critic_loss", float(critic_loss))
+        self.logs.log("critic_reset_loss", float(critic_reset_loss))
         self.logs.log("q1_pred", float(q1_pred.mean()))
         self.logs.log("q2_pred", float(q2_pred.mean()))
         self.logs.log("q1_reset_pred", float(q1_reset_pred.mean()))
-        self.logs.log("q2_reset_pred", float(q2_reset_pred.mean()))
         self.logs.log("rho", float(self.rho))
         self.logs.log("rho_reset", float(self.rho_reset))
 
@@ -205,13 +193,8 @@ class RVI_SAC(AlgorithmBase):
         log_prob = action_dist.log_prob(action)
         reset_cost = self.reset_cost()
 
-        q1, q2, q1_reset, q2_reset = self.critic(
-            (batch.state.repeat(4, 1, 1), action.repeat(4, 1, 1))
-        )
+        q1, q2, _ = self.critic((batch.state, action))
 
-        # q = torch.min(q1, q2) + self.use_reset_scheme * float(0.0) * torch.min(
-        #     q1_reset, q2_reset
-        # )
         q = torch.min(q1, q2)
         # L(θ) = E_π[α * log π(a|s) - Q(s, a)]
         policy_loss = torch.mean(self.temperature().detach() * log_prob - q.flatten())
@@ -234,7 +217,7 @@ class RVI_SAC(AlgorithmBase):
 
         # update reset cost
         reset_cost_loss = -torch.mean(
-            reset_cost * (-self.rho_reset - self.target_reset_prob)
+            reset_cost * (self.rho_reset - self.target_reset_prob)
         )
         self.reset_cost_optimizer.zero_grad()
         reset_cost_loss.backward()

@@ -15,6 +15,7 @@ ActorFunc = Callable[[np.ndarray], np.ndarray]
 def evaluate(env: gymnasium.Env, actor: ActorFunc, num_episodes: int = 10):
     reward_sums = []
     step_per_episodes = []
+    average_rewards = []
 
     for _ in range(num_episodes):
         state, _ = env.reset()
@@ -36,8 +37,13 @@ def evaluate(env: gymnasium.Env, actor: ActorFunc, num_episodes: int = 10):
 
         reward_sums.append(reward_sum)
         step_per_episodes.append(step_per_episode)
+        average_rewards.append(reward_sum / step_per_episode)
 
-    return np.mean(reward_sums), np.mean(step_per_episodes)
+    return {
+        "returns": np.mean(reward_sums),
+        "step_per_episode": np.mean(step_per_episodes),
+        "average_rewards": np.mean(average_rewards),
+    }
 
 
 def train(
@@ -92,14 +98,21 @@ def train(
                 colorama.Fore.BLUE + "AgentLog: " + colorama.Style.RESET_ALL + str(logs)
             )
             with agent.eval_mode():
-                returns, steps = evaluate(env_eval, agent.act, num_episodes=10)
+                eval = evaluate(env_eval, agent.act, num_episodes=10)
 
-            logs.update({"step": step, "eval/returns": returns})
+            logs.update(
+                {
+                    "step": step,
+                    "eval/returns": eval["returns"],
+                    "eval/step_per_episode": eval["step_per_episode"],
+                    "eval/average_rewards": eval["average_rewards"],
+                }
+            )
             wandb.log(logs)
 
             logger.info(
                 colorama.Fore.RED
                 + "Eval: "
                 + colorama.Style.RESET_ALL
-                + f"step: {step}, returns: {returns.mean():.3f}, step_per_episode: {steps.mean()}"
+                + f"step: {step}, returns: {eval['returns']:.3f}, step_per_episode: {eval['step_per_episode']}"
             )

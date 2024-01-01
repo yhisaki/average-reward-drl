@@ -1,11 +1,12 @@
+import logging
+
 import gymnasium
-from gymnasium.wrappers.rescale_action import RescaleAction
 import hydra
+from gymnasium.wrappers.rescale_action import RescaleAction
 from omegaconf import DictConfig, OmegaConf
 
 import wandb
-from average_reward_drl import fix_seed, train, make_algorithm, DMCWrapper
-import logging
+from average_reward_drl import DMCWrapper, fix_seed, make_algorithm, train
 
 # from pprint import pprint
 
@@ -51,6 +52,9 @@ def main(cfg: DictConfig) -> None:
         tags=conf["tags"],
         config=conf,
     )
+
+    log.info(f"Environment: {env_train.unwrapped.spec.id}")
+    log.info(f"Algorithm: {conf['algo']['id']}")
 
     train(
         agent=agent,

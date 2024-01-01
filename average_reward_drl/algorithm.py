@@ -1,13 +1,11 @@
 import contextlib
 from abc import ABCMeta, abstractmethod
-from typing import Any
+from typing import Any, Dict, Type, TypeVar
 
 import numpy as np
 
 from average_reward_drl.logger import Logger
 from average_reward_drl.replay_buffer import ReplayBuffer
-
-from typing import TypeVar, Type, Dict
 
 
 class AlgorithmBase(object, metaclass=ABCMeta):
