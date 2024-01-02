@@ -52,7 +52,7 @@ class DMCWrapper(GymnasiumEnv):
             {},
         )
 
-    def reset(self):
+    def reset(self, **kwargs):
         timestep = self._env.reset()
         return timestep.observation["observations"], {}
 

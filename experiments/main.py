@@ -53,7 +53,7 @@ def main(cfg: DictConfig) -> None:
         config=conf,
     )
 
-    log.info(f"Environment: {env_train.unwrapped.spec.id}")
+    log.info(f"Environment: {conf['env']['name']}")
     log.info(f"Algorithm: {conf['algo']['id']}")
 
     train(
