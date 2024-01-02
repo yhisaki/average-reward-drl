@@ -172,7 +172,7 @@ class RVI_SAC(AlgorithmBase):
         q1_pred, q2_pred = self.critic(
             (batch.state.repeat(2, 1, 1), batch.action.repeat(2, 1, 1))
         )
-        q_reset_pred = self.critic_reset((batch.next_state, next_action))
+        q_reset_pred = self.critic_reset((batch.state, batch.action))
 
         critic_loss = 0.5 * (
             F.mse_loss(q1_pred.flatten(), target_q)
