@@ -47,8 +47,7 @@ class RVI_SAC(AlgorithmBase):
 
         # define networks
         hidden_dim = 256
-        num_parallel = 3
-
+        num_parallel = 2
         # critic
         self.critic = nn.Sequential(
             ConcatStateAction(),
@@ -58,8 +57,19 @@ class RVI_SAC(AlgorithmBase):
             nn.ReLU(),
             MultiLinear(num_parallel, hidden_dim, 1),
         ).to(device)
-
         self.critic_target = copy.deepcopy(self.critic).eval().requires_grad_(False)
+
+        self.critic_reset = nn.Sequential(
+            ConcatStateAction(),
+            ortho_init(nn.Linear(dim_state + dim_action, 64)),
+            nn.ReLU(),
+            ortho_init(nn.Linear(64, 64)),
+            nn.ReLU(),
+            ortho_init(nn.Linear(64, 1)),
+        ).to(device)
+        self.critic_reset_target = (
+            copy.deepcopy(self.critic_reset).eval().requires_grad_(False)
+        )
 
         # define rho (average reward)
         self.rho = 0.0
@@ -84,6 +94,7 @@ class RVI_SAC(AlgorithmBase):
 
         # define optimizers
         self.critic_optimizer = Adam(self.critic.parameters(), lr=lr)
+        self.critic_reset_optimizer = Adam(self.critic_reset.parameters(), lr=lr)
         self.policy_optimizer = Adam(self.actor.parameters(), lr=lr)
 
         # define temperature
@@ -140,9 +151,10 @@ class RVI_SAC(AlgorithmBase):
             next_action = next_action_dist.sample()
             next_log_prob = next_action_dist.log_prob(next_action)
 
-            next_q1, next_q2, next_q_reset = self.critic_target(
-                (batch.next_state.repeat(3, 1, 1), next_action.repeat(3, 1, 1))
+            next_q1, next_q2 = self.critic_target(
+                (batch.next_state.repeat(2, 1, 1), next_action.repeat(2, 1, 1))
             )
+            next_q_reset = self.critic_reset_target((batch.next_state, next_action))
 
             next_q = torch.flatten(torch.min(next_q1, next_q2))
 
@@ -157,20 +169,23 @@ class RVI_SAC(AlgorithmBase):
             target_rho = torch.mean(next_q - entropy_term)
             target_rho_reset = torch.mean(next_q_reset)
 
-        q1_pred, q2_pred, q1_reset_pred = self.critic(
-            (batch.state.repeat(3, 1, 1), batch.action.repeat(3, 1, 1))
+        q1_pred, q2_pred = self.critic(
+            (batch.state.repeat(2, 1, 1), batch.action.repeat(2, 1, 1))
         )
+        q_reset_pred = self.critic_reset((batch.next_state, next_action))
 
         critic_loss = 0.5 * (
             F.mse_loss(q1_pred.flatten(), target_q)
             + F.mse_loss(q2_pred.flatten(), target_q)
         )
 
-        critic_reset_loss = F.mse_loss(q1_reset_pred.flatten(), target_q_reset)
+        critic_reset_loss = F.mse_loss(q_reset_pred.flatten(), target_q_reset)
 
         self.critic_optimizer.zero_grad()
+        self.critic_reset_optimizer.zero_grad()
         (critic_loss + critic_reset_loss).backward()
         self.critic_optimizer.step()
+        self.critic_reset_optimizer.step()
 
         self.rho = (
             1 - self.rho_update_tau
@@ -183,7 +198,7 @@ class RVI_SAC(AlgorithmBase):
         self.logs.log("critic_reset_loss", float(critic_reset_loss))
         self.logs.log("q1_pred", float(q1_pred.mean()))
         self.logs.log("q2_pred", float(q2_pred.mean()))
-        self.logs.log("q1_reset_pred", float(q1_reset_pred.mean()))
+        self.logs.log("q_reset_pred", float(q_reset_pred.mean()))
         self.logs.log("rho", float(self.rho))
         self.logs.log("rho_reset", float(self.rho_reset))
 
@@ -193,7 +208,7 @@ class RVI_SAC(AlgorithmBase):
         log_prob = action_dist.log_prob(action)
         reset_cost = self.reset_cost()
 
-        q1, q2, _ = self.critic((batch.state, action))
+        q1, q2 = self.critic((batch.state, action))
 
         q = torch.min(q1, q2)
         # L(θ) = E_π[α * log π(a|s) - Q(s, a)]
@@ -230,4 +245,9 @@ class RVI_SAC(AlgorithmBase):
     def update_target_networks(self):
         polyak_update(
             self.critic.parameters(), self.critic_target.parameters(), self.tau
+        )
+        polyak_update(
+            self.critic_reset.parameters(),
+            self.critic_reset_target.parameters(),
+            self.tau,
         )
