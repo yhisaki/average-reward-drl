@@ -51,16 +51,11 @@ class SAC(AlgorithmBase):
         # critic
         self.critic = nn.Sequential(
             ConcatStateAction(),
-            ortho_init(
-                MultiLinear(num_parallel, dim_state + dim_action, hidden_dim),
-                gain=init_gain,
-            ),
+            MultiLinear(num_parallel, dim_state + dim_action, hidden_dim),
             nn.ReLU(),
-            ortho_init(
-                MultiLinear(num_parallel, hidden_dim, hidden_dim), gain=init_gain
-            ),
+            MultiLinear(num_parallel, hidden_dim, hidden_dim),
             nn.ReLU(),
-            ortho_init(MultiLinear(num_parallel, hidden_dim, 1), gain=init_gain),
+            MultiLinear(num_parallel, hidden_dim, 1),
         ).to(device)
         self.critic_target = copy.deepcopy(self.critic).eval().requires_grad_(False)
 
