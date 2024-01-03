@@ -1,5 +1,5 @@
 import copy
-from typing import Any, Tuple, Union
+from typing import Union
 
 import numpy as np
 import torch
@@ -26,18 +26,19 @@ class RVI_SAC_WITH_REFERENCE(AlgorithmBase):
         self,
         dim_state: int,
         dim_action: int,
-        reference: Tuple[np.ndarray, np.ndarray],
+        reference_state: np.ndarray,
+        reference_action: np.ndarray,
         target_reset_prob: float = 1e-3,
         lr: float = 3e-4,
-        batch_size: int = 250,
+        batch_size: int = 256,
         replay_buffer_capacity: int = 10**6,
         replay_start_size: int = 10**4,
         tau: float = 0.005,
-        rho_update_tau: float = 1e-2,
         use_reset_scheme: bool = True,
         device: Union[str, torch.device] = torch.device(
             "cuda:0" if cuda.is_available() else "cpu"
         ),
+        **kwargs,
     ) -> None:
         super().__init__()
 
@@ -47,35 +48,42 @@ class RVI_SAC_WITH_REFERENCE(AlgorithmBase):
 
         # define networks
         hidden_dim = 256
-        num_parallel = 4
-        init_gain = np.sqrt(1.0 / 3.0)
-
+        num_parallel = 2
         # critic
         self.critic = nn.Sequential(
             ConcatStateAction(),
-            ortho_init(
-                MultiLinear(num_parallel, dim_state + dim_action, hidden_dim),
-                gain=init_gain,
-            ),
+            MultiLinear(num_parallel, dim_state + dim_action, hidden_dim),
             nn.ReLU(),
-            ortho_init(
-                MultiLinear(num_parallel, hidden_dim, hidden_dim),
-                gain=init_gain,
-            ),
+            MultiLinear(num_parallel, hidden_dim, hidden_dim),
             nn.ReLU(),
-            ortho_init(MultiLinear(num_parallel, hidden_dim, 1), gain=init_gain),
+            MultiLinear(num_parallel, hidden_dim, 1),
         ).to(device)
-
         self.critic_target = copy.deepcopy(self.critic).eval().requires_grad_(False)
+
+        self.critic_reset = nn.Sequential(
+            ConcatStateAction(),
+            ortho_init(nn.Linear(dim_state + dim_action, 64)),
+            nn.ReLU(),
+            ortho_init(nn.Linear(64, 64)),
+            nn.ReLU(),
+            ortho_init(nn.Linear(64, 1)),
+        ).to(device)
+        self.critic_reset_target = (
+            copy.deepcopy(self.critic_reset).eval().requires_grad_(False)
+        )
+
+        # reference
+        self.reference_state = torch.tensor(reference_state).float().to(device)
+        self.reference_action = torch.tensor(reference_action).float().to(device)
 
         # actor
         self.actor_gaussian_head = SquashedDiagonalGaussianHead()
         self.actor = nn.Sequential(
-            ortho_init(nn.Linear(dim_state, hidden_dim), gain=np.sqrt(1.0 / 3.0)),
+            ortho_init(nn.Linear(dim_state, hidden_dim)),
             nn.ReLU(),
-            ortho_init(nn.Linear(hidden_dim, hidden_dim), gain=np.sqrt(1.0 / 3.0)),
+            ortho_init(nn.Linear(hidden_dim, hidden_dim)),
             nn.ReLU(),
-            ortho_init(nn.Linear(hidden_dim, dim_action * 2), gain=np.sqrt(1.0 / 3.0)),
+            ortho_init(nn.Linear(hidden_dim, dim_action * 2)),
             self.actor_gaussian_head,
         ).to(device)
 
@@ -87,6 +95,7 @@ class RVI_SAC_WITH_REFERENCE(AlgorithmBase):
 
         # define optimizers
         self.critic_optimizer = Adam(self.critic.parameters(), lr=lr)
+        self.critic_reset_optimizer = Adam(self.critic_reset.parameters(), lr=lr)
         self.policy_optimizer = Adam(self.actor.parameters(), lr=lr)
 
         # define temperature
@@ -99,10 +108,7 @@ class RVI_SAC_WITH_REFERENCE(AlgorithmBase):
         self.replay_start_size = replay_start_size
 
         # define other hyperparameters
-        self.reference = reference
         self.tau = tau
-        self.rho_update_tau = rho_update_tau
-
         self.device = device
 
         self.logs = Logger()
@@ -127,7 +133,7 @@ class RVI_SAC_WITH_REFERENCE(AlgorithmBase):
 
         return action
 
-    def update_if_dataset_is_ready(self) -> Any:
+    def update_if_dataset_is_ready(self):
         assert self.training
         self.just_updated = False
         if len(self.replay_buffer) >= self.replay_start_size:
@@ -144,46 +150,59 @@ class RVI_SAC_WITH_REFERENCE(AlgorithmBase):
             next_action = next_action_dist.sample()
             next_log_prob = next_action_dist.log_prob(next_action)
 
-            next_q1, next_q2, next_q1_reset, next_q2_reset = self.critic_target(
-                (batch.next_state.repeat(4, 1, 1), next_action.repeat(4, 1, 1))
+            next_q1, next_q2 = self.critic_target(
+                (batch.next_state.repeat(2, 1, 1), next_action.repeat(2, 1, 1))
+            )
+            next_q_reset = self.critic_reset_target((batch.next_state, next_action))
+
+            next_q = torch.flatten(torch.min(next_q1, next_q2))
+
+            next_q_ref1, next_q_ref2 = self.critic_target(
+                (
+                    self.reference_state.repeat(2, 1, 1),
+                    self.reference_action.repeat(2, 1, 1),
+                )
             )
 
-            next_q = torch.min(next_q1, next_q2).flatten()
-            next_q_reset = torch.min(next_q1_reset, next_q2_reset).flatten()
+            self.rho = float(torch.min(next_q_ref1, next_q_ref2))
 
-            reference_state, reference_action = self.reference
-            # reference_q1, reference_q2, reference_q1_reset, reference_q2_reset = self.critic_target(
+            next_q_ref_reset = self.critic_reset_target(
+                (self.reference_state, self.reference_action)
+            )
+
+            self.rho_reset = float(next_q_ref_reset)
 
             entropy_term = self.temperature() * next_log_prob
 
-            reset = -batch.terminated.float()
+            reset = batch.terminated.float()
+            reward = batch.reward - float(self.reset_cost()) * reset
 
-            target_q = batch.reward - self.rho + (next_q - entropy_term)
-            target_q_reset = reset - self.rho_reset + (next_q_reset)
+            target_q = reward - self.rho + (next_q - entropy_term)
+            target_q_reset = reset - self.rho_reset + torch.flatten(next_q_reset)
 
-        q1_pred, q2_pred, q1_reset_pred, q2_reset_pred = self.critic(
-            (batch.state.repeat(4, 1, 1), batch.action.repeat(4, 1, 1))
+        q1_pred, q2_pred = self.critic(
+            (batch.state.repeat(2, 1, 1), batch.action.repeat(2, 1, 1))
         )
+        q_reset_pred = self.critic_reset((batch.state, batch.action))
 
-        q_loss = 0.5 * (
+        critic_loss = 0.5 * (
             F.mse_loss(q1_pred.flatten(), target_q)
             + F.mse_loss(q2_pred.flatten(), target_q)
         )
-        q_reset_loss = 0.5 * (
-            F.mse_loss(q1_reset_pred.flatten(), target_q_reset)
-            + F.mse_loss(q2_reset_pred.flatten(), target_q_reset)
-        )
-        critic_loss = q_loss + q_reset_loss
+
+        critic_reset_loss = F.mse_loss(q_reset_pred.flatten(), target_q_reset)
 
         self.critic_optimizer.zero_grad()
-        critic_loss.backward()
+        self.critic_reset_optimizer.zero_grad()
+        (critic_loss + critic_reset_loss).backward()
         self.critic_optimizer.step()
+        self.critic_reset_optimizer.step()
 
         self.logs.log("critic_loss", float(critic_loss))
+        self.logs.log("critic_reset_loss", float(critic_reset_loss))
         self.logs.log("q1_pred", float(q1_pred.mean()))
         self.logs.log("q2_pred", float(q2_pred.mean()))
-        self.logs.log("q1_reset_pred", float(q1_reset_pred.mean()))
-        self.logs.log("q2_reset_pred", float(q2_reset_pred.mean()))
+        self.logs.log("q_reset_pred", float(q_reset_pred.mean()))
         self.logs.log("rho", float(self.rho))
         self.logs.log("rho_reset", float(self.rho_reset))
 
@@ -193,14 +212,9 @@ class RVI_SAC_WITH_REFERENCE(AlgorithmBase):
         log_prob = action_dist.log_prob(action)
         reset_cost = self.reset_cost()
 
-        q1, q2, q1_reset, q2_reset = self.critic(
-            (batch.state.repeat(4, 1, 1), action.repeat(4, 1, 1))
-        )
+        q1, q2 = self.critic((batch.state, action))
 
-        q = torch.min(q1, q2) + self.use_reset_scheme * float(reset_cost) * torch.min(
-            q1_reset, q2_reset
-        )
-        # q = torch.min(q1, q2)
+        q = torch.min(q1, q2)
         # L(θ) = E_π[α * log π(a|s) - Q(s, a)]
         policy_loss = torch.mean(self.temperature().detach() * log_prob - q.flatten())
 
@@ -222,7 +236,7 @@ class RVI_SAC_WITH_REFERENCE(AlgorithmBase):
 
         # update reset cost
         reset_cost_loss = -torch.mean(
-            reset_cost * (-self.rho_reset - self.target_reset_prob)
+            reset_cost * (self.rho_reset - self.target_reset_prob)
         )
         self.reset_cost_optimizer.zero_grad()
         reset_cost_loss.backward()
@@ -235,4 +249,9 @@ class RVI_SAC_WITH_REFERENCE(AlgorithmBase):
     def update_target_networks(self):
         polyak_update(
             self.critic.parameters(), self.critic_target.parameters(), self.tau
+        )
+        polyak_update(
+            self.critic_reset.parameters(),
+            self.critic_reset_target.parameters(),
+            self.tau,
         )
