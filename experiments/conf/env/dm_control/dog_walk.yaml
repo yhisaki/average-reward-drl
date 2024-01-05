@@ -1,0 +1,4 @@
+defaults:
+  - default_dm_control
+domain_name: dog
+task_name: walk

@@ -1,0 +1,4 @@
+defaults:
+  - default_dm_control
+domain_name: lqr
+task_name: lqr_2_1

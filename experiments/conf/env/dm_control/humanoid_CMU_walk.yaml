@@ -1,0 +1,4 @@
+defaults:
+  - default_dm_control
+domain_name: humanoid_CMU
+task_name: walk

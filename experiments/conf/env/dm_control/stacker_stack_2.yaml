@@ -1,0 +1,4 @@
+defaults:
+  - default_dm_control
+domain_name: stacker
+task_name: stack_2

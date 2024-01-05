@@ -1,7 +1,7 @@
 defaults:
   - _self_
   - algo: rvi_sac
-  - env: Ant-v4
+  - env: gymnasium/Ant-v4
 
 project: average-reward-drl
 group: ${algo.name}-${env.name}

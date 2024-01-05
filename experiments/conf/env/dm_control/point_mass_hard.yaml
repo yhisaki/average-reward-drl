@@ -1,0 +1,4 @@
+defaults:
+  - default_dm_control
+domain_name: point_mass
+task_name: hard

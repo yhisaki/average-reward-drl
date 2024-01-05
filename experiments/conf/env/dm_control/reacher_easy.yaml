@@ -1,0 +1,4 @@
+defaults:
+  - default_dm_control
+domain_name: reacher
+task_name: easy

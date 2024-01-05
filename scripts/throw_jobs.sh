@@ -11,7 +11,7 @@
 
 module load python/3.10.2 cuda/12.1.0 cudnn/8.8.1
 
-ENV_ID=Walker2d-v4
+ENV_ID=gymnasium/Walker2d-v4
 
 poetry run python3 experiments/main.py \
   env="$ENV_ID" \
