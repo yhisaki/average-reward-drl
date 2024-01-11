@@ -61,6 +61,7 @@ def main(cfg: DictConfig) -> None:
         env_train=env_train,
         env_eval=env_eval,
         total_steps=conf["total_steps"],
+        eval_interval=conf["eval_interval"],
         log_interval=conf["log_interval"],
         use_reset_scheme=conf["use_reset_scheme"],
         logger=log,

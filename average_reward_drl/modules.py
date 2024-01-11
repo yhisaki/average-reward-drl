@@ -106,12 +106,12 @@ class SquashedDiagonalGaussianHead(nn.Module):
 
     def forward(self, x):
         mean, log_scale = torch.chunk(x, 2, dim=x.dim() // 2)
-        if self.deterministic:
-            return torch.tanh(mean)
-        log_scale = torch.clamp(log_scale, -20.0, 2.0)
-        var = torch.exp(log_scale * 2)
-        base_distribution = Independent(Normal(loc=mean, scale=torch.sqrt(var)), 1)
+        log_scale = torch.clamp(log_scale, -5.0, 2.0)
+        scale = torch.exp(log_scale)
+        base_distribution = Independent(Normal(loc=mean, scale=scale), 1)
         squashed_distribution = TransformedDistribution(
             base_distribution, TanhTransform(cache_size=1)
         )
+        if self.deterministic:
+            return (torch.tanh(mean + scale) + torch.tanh(mean - scale)) / 2.0
         return squashed_distribution

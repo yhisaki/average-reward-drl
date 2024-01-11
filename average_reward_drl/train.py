@@ -51,6 +51,7 @@ def train(
     env_train: GymnasiumEnv,
     env_eval: GymnasiumEnv,
     total_steps: int,
+    eval_interval: int,
     log_interval: int,
     use_reset_scheme: bool,
     logger: Logger,
@@ -62,6 +63,9 @@ def train(
     total_returns = 0.0
 
     for step in range(total_steps):
+        logs = {"step": step}
+        excute_log = False
+
         action = agent.act(state)
 
         next_state, reward, terminated, truncated, _ = env_train.step(action)
@@ -82,7 +86,14 @@ def train(
             state = next_state
 
         if reset_excuted:
-            wandb.log({"step": step, "train/returns": total_returns})
+            logs.update(
+                {
+                    "train/returns": total_returns,
+                    "train/step_per_episode": step_per_episode,
+                    "train/average_rewards": total_returns / step_per_episode,
+                }
+            )
+            excute_log = True
             logger.info(
                 colorama.Fore.GREEN
                 + "Train: "
@@ -92,23 +103,18 @@ def train(
             total_returns = 0.0
             step_per_episode = 0
 
-        if step % log_interval == 0 and agent.just_updated:
-            logs = agent.logs.flush()
-            logger.info(
-                colorama.Fore.BLUE + "AgentLog: " + colorama.Style.RESET_ALL + str(logs)
-            )
+        if step % eval_interval == 0:
             with agent.eval_mode():
                 eval = evaluate(env_eval, agent.act, num_episodes=10)
 
             logs.update(
                 {
-                    "step": step,
                     "eval/returns": eval["returns"],
                     "eval/step_per_episode": eval["step_per_episode"],
                     "eval/average_rewards": eval["average_rewards"],
                 }
             )
-            wandb.log(logs)
+            excute_log = True
 
             logger.info(
                 colorama.Fore.RED
@@ -116,3 +122,17 @@ def train(
                 + colorama.Style.RESET_ALL
                 + f"step: {step}, returns: {eval['returns']:.3f}, step_per_episode: {eval['step_per_episode']}"
             )
+
+        if step % log_interval == 0 and agent.just_updated:
+            agent_logs = agent.logs.flush()
+            logs.update(agent_logs)
+            excute_log = True
+            logger.info(
+                colorama.Fore.BLUE
+                + "AgentLog: "
+                + colorama.Style.RESET_ALL
+                + str(agent_logs)
+            )
+
+        if excute_log:
+            wandb.log(logs)
