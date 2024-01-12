@@ -151,9 +151,7 @@ class RVI_SAC(AlgorithmBase):
             next_action = next_action_dist.sample()
             next_log_prob = next_action_dist.log_prob(next_action)
 
-            next_q1, next_q2 = self.critic_target(
-                (batch.next_state.repeat(2, 1, 1), next_action.repeat(2, 1, 1))
-            )
+            next_q1, next_q2 = self.critic_target((batch.next_state, next_action))
             next_q_reset = self.critic_reset_target((batch.next_state, next_action))
 
             next_q = torch.flatten(torch.min(next_q1, next_q2))
@@ -169,9 +167,7 @@ class RVI_SAC(AlgorithmBase):
             target_rho = torch.mean(next_q - entropy_term)
             target_rho_reset = torch.mean(next_q_reset)
 
-        q1_pred, q2_pred = self.critic(
-            (batch.state.repeat(2, 1, 1), batch.action.repeat(2, 1, 1))
-        )
+        q1_pred, q2_pred = self.critic((batch.state, batch.action))
         q_reset_pred = self.critic_reset((batch.state, batch.action))
 
         critic_loss = 0.5 * (
