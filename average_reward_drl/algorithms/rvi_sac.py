@@ -27,6 +27,7 @@ class RVI_SAC(AlgorithmBase):
         dim_state: int,
         dim_action: int,
         target_reset_prob: float = 1e-3,
+        fq_gain: float = 1e-3,
         lr: float = 3e-4,
         batch_size: int = 256,
         replay_buffer_capacity: int = 10**6,
@@ -61,11 +62,11 @@ class RVI_SAC(AlgorithmBase):
 
         self.critic_reset = nn.Sequential(
             ConcatStateAction(),
-            ortho_init(nn.Linear(dim_state + dim_action, 64)),
+            ortho_init(nn.Linear(dim_state + dim_action, 16)),
             nn.ReLU(),
-            ortho_init(nn.Linear(64, 64)),
+            ortho_init(nn.Linear(16, 16)),
             nn.ReLU(),
-            ortho_init(nn.Linear(64, 1)),
+            ortho_init(nn.Linear(16, 1)),
         ).to(device)
         self.critic_reset_target = (
             copy.deepcopy(self.critic_reset).eval().requires_grad_(False)
@@ -107,6 +108,7 @@ class RVI_SAC(AlgorithmBase):
         self.replay_start_size = replay_start_size
 
         # define other hyperparameters
+        self.fq_gain = fq_gain
         self.tau = tau
         self.rho_update_tau = rho_update_tau
 
@@ -164,8 +166,8 @@ class RVI_SAC(AlgorithmBase):
             target_q = reward - self.rho + (next_q - entropy_term)
             target_q_reset = reset - self.rho_reset + torch.flatten(next_q_reset)
 
-            target_rho = torch.mean(next_q - entropy_term)
-            target_rho_reset = torch.mean(next_q_reset)
+            target_rho = torch.sum(next_q - entropy_term) * self.fq_gain
+            target_rho_reset = torch.sum(next_q_reset) * self.fq_gain
 
         q1_pred, q2_pred = self.critic((batch.state, batch.action))
         q_reset_pred = self.critic_reset((batch.state, batch.action))

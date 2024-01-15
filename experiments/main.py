@@ -55,6 +55,7 @@ def main(cfg: DictConfig) -> None:
 
     log.info(f"Environment: {conf['env']['name']}")
     log.info(f"Algorithm: {conf['algo']['id']}")
+    log.info(f"Seed: {conf['seed']}")
 
     train(
         agent=agent,
