@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -l walltime=10:00:00
-#PBS -l ncpus=20
+#PBS -l ngpus=1
 #PBS -J 1-10
 #PBS -j oe
 #PBS -o out/^array_index^.log
@@ -8,11 +8,11 @@
 cd $PBS_O_WORKDIR 
 
 ARRAY_ID=$(echo $PBS_ARRAY_ID | grep -o '[0-9]\+')
-ENV_ID=gymnasium/Swimmer-v4
+ENV_ID=gymnasium/Ant-v4
 
 poetry run python3 experiments/main.py \
   env="$ENV_ID" \
   project=average-reward-drl \
   group="$ENV_ID-$ARRAY_ID-GPUSV" \
   seed="$PBS_ARRAY_INDEX" \
-  algo.params.fq_gain=0.5
+  algo.params.fq_gain = 0.001
