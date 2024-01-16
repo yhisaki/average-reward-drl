@@ -8,8 +8,6 @@ from omegaconf import DictConfig, OmegaConf
 import wandb
 from average_reward_drl import DMCWrapper, fix_seed, make_algorithm, train
 
-# from pprint import pprint
-
 
 log = logging.getLogger(__name__)
 
@@ -17,7 +15,6 @@ log = logging.getLogger(__name__)
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def main(cfg: DictConfig) -> None:
     conf = OmegaConf.to_container(cfg, resolve=True)
-    # pprint(conf)
 
     # Fix seed
     fix_seed(conf["seed"])

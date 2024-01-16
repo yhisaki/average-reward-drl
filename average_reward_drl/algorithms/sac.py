@@ -26,6 +26,8 @@ class SAC(AlgorithmBase):
         self,
         dim_state: int,
         dim_action: int,
+        critic_hidden_dim: int = 256,
+        actor_hidden_dim: int = 256,
         gamma: float = 0.99,
         lr: float = 3e-4,
         batch_size: int = 256,
@@ -44,28 +46,26 @@ class SAC(AlgorithmBase):
         self.dim_action = dim_action
 
         # define networks
-        hidden_dim = 256
         num_parallel = 2
-        init_gain = np.sqrt(1.0 / 3.0)
 
         # critic
         self.critic = nn.Sequential(
             ConcatStateAction(),
-            MultiLinear(num_parallel, dim_state + dim_action, hidden_dim),
+            MultiLinear(num_parallel, dim_state + dim_action, critic_hidden_dim),
             nn.ReLU(),
-            MultiLinear(num_parallel, hidden_dim, hidden_dim),
+            MultiLinear(num_parallel, critic_hidden_dim, critic_hidden_dim),
             nn.ReLU(),
-            MultiLinear(num_parallel, hidden_dim, 1),
+            MultiLinear(num_parallel, critic_hidden_dim, 1),
         ).to(device)
         self.critic_target = copy.deepcopy(self.critic).eval().requires_grad_(False)
 
         self.actor_gaussian_head = SquashedDiagonalGaussianHead()
         self.actor = nn.Sequential(
-            ortho_init(nn.Linear(dim_state, hidden_dim), gain=init_gain),
+            ortho_init(nn.Linear(dim_state, actor_hidden_dim)),
             nn.ReLU(),
-            ortho_init(nn.Linear(hidden_dim, hidden_dim), gain=init_gain),
+            ortho_init(nn.Linear(actor_hidden_dim, actor_hidden_dim)),
             nn.ReLU(),
-            ortho_init(nn.Linear(hidden_dim, dim_action * 2), gain=init_gain),
+            ortho_init(nn.Linear(actor_hidden_dim, dim_action * 2)),
             self.actor_gaussian_head,
         ).to(device)
 
@@ -127,9 +127,7 @@ class SAC(AlgorithmBase):
             next_action_dist: Distribution = self.actor(batch.next_state)
             next_action = next_action_dist.sample()
             next_log_prob = next_action_dist.log_prob(next_action)
-            next_q1, next_q2 = self.critic_target(
-                (batch.next_state.repeat(2, 1, 1), next_action.repeat(2, 1, 1))
-            )
+            next_q1, next_q2 = self.critic_target((batch.next_state, next_action))
             next_q = torch.flatten(torch.min(next_q1, next_q2))
             entropy_term = self.temperature() * next_log_prob
 
@@ -137,9 +135,7 @@ class SAC(AlgorithmBase):
                 next_q - entropy_term
             )
 
-        q1_pred, q2_pred = self.critic(
-            (batch.state.repeat(2, 1, 1), batch.action.repeat(2, 1, 1))
-        )
+        q1_pred, q2_pred = self.critic((batch.state, batch.action))
 
         critic_loss = 0.5 * (
             F.mse_loss(q1_pred.flatten(), target_q)
@@ -151,14 +147,16 @@ class SAC(AlgorithmBase):
         self.critic_optimizer.step()
 
         self.logs.log("critic_loss", float(critic_loss))
-        self.logs.log("q1_pred", float(q1_pred.mean()))
-        self.logs.log("q2_pred", float(q2_pred.mean()))
+        self.logs.log("q1_pred_mean", float(q1_pred.mean()))
+        self.logs.log("q1_pred_std", float(q1_pred.std()))
+        self.logs.log("q2_pred_mean", float(q2_pred.mean()))
+        self.logs.log("q2_pred_std", float(q2_pred.std()))
 
     def update_actor(self, batch: Batch):
         action_dist: Distribution = self.actor(batch.state)
         action = action_dist.rsample()
         log_prob = action_dist.log_prob(action)
-        q1, q2 = self.critic((batch.state.repeat(2, 1, 1), action.repeat(2, 1, 1)))
+        q1, q2 = self.critic((batch.state, action))
         q = torch.flatten(torch.min(q1, q2))
 
         # L(θ) = E_π[α * log π(a|s) - Q(s, a)]

@@ -21,29 +21,15 @@ poetry install
 - [x] [ARO-DDPG](https://arxiv.org/abs/2305.12239) (Original Implementation: [here](https://github.com/namansaxena9/ARO-DDPG))
 - [ ] [ATRPO](https://arxiv.org/abs/2305.12239)
 
-## Running the Code
+## Run the experiment code
 
-### RVI-SAC
-
-- gymnasium
-
-  ```bash
-  poetry run python3 experiments/gymnasium/exp_rvi_sac.py env_id=Walker2d-v4
-  ```
-
-- dm_control
-
-  ```bash
-  poetry run python3 experiments/gymnasium/exp_rvi_sac.py env_id=walker_walk
-  ```
-
-### SAC
-
-
-### ARO-DDPG
+Hyperparameters are managed by [hydra](https://hydra.cc/docs/intro/). See [config.yaml](experiments/conf/config.yaml) for details.
 
 ```bash
-poetry run python3 experiments/aro_ddpg.py
+poetry run python3 experiments/main.py \
+  algo=rvi_sac \
+  env=Ant-v4 \
+  seed=0
 ```
 
 ## Results

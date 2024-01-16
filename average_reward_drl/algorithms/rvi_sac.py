@@ -26,6 +26,9 @@ class RVI_SAC(AlgorithmBase):
         self,
         dim_state: int,
         dim_action: int,
+        critic_hidden_dim: int = 256,
+        critic_reset_hidden_dim: int = 16,
+        actor_hidden_dim: int = 256,
         target_reset_prob: float = 1e-3,
         fq_gain: float = 1e-3,
         lr: float = 3e-4,
@@ -47,26 +50,25 @@ class RVI_SAC(AlgorithmBase):
         self.dim_action = dim_action
 
         # define networks
-        hidden_dim = 256
         num_parallel = 2
         # critic
         self.critic = nn.Sequential(
             ConcatStateAction(),
-            MultiLinear(num_parallel, dim_state + dim_action, hidden_dim),
+            MultiLinear(num_parallel, dim_state + dim_action, critic_hidden_dim),
             nn.ReLU(),
-            MultiLinear(num_parallel, hidden_dim, hidden_dim),
+            MultiLinear(num_parallel, critic_hidden_dim, critic_hidden_dim),
             nn.ReLU(),
-            MultiLinear(num_parallel, hidden_dim, 1),
+            MultiLinear(num_parallel, critic_hidden_dim, 1),
         ).to(device)
         self.critic_target = copy.deepcopy(self.critic).eval().requires_grad_(False)
 
         self.critic_reset = nn.Sequential(
             ConcatStateAction(),
-            ortho_init(nn.Linear(dim_state + dim_action, 16)),
+            ortho_init(nn.Linear(dim_state + dim_action, critic_reset_hidden_dim)),
             nn.ReLU(),
-            ortho_init(nn.Linear(16, 16)),
+            ortho_init(nn.Linear(critic_reset_hidden_dim, critic_reset_hidden_dim)),
             nn.ReLU(),
-            ortho_init(nn.Linear(16, 1)),
+            ortho_init(nn.Linear(critic_reset_hidden_dim, 1)),
         ).to(device)
         self.critic_reset_target = (
             copy.deepcopy(self.critic_reset).eval().requires_grad_(False)
@@ -79,11 +81,11 @@ class RVI_SAC(AlgorithmBase):
         # actor
         self.actor_gaussian_head = SquashedDiagonalGaussianHead()
         self.actor = nn.Sequential(
-            ortho_init(nn.Linear(dim_state, hidden_dim)),
+            ortho_init(nn.Linear(dim_state, actor_hidden_dim)),
             nn.ReLU(),
-            ortho_init(nn.Linear(hidden_dim, hidden_dim)),
+            ortho_init(nn.Linear(actor_hidden_dim, actor_hidden_dim)),
             nn.ReLU(),
-            ortho_init(nn.Linear(hidden_dim, dim_action * 2)),
+            ortho_init(nn.Linear(actor_hidden_dim, dim_action * 2)),
             self.actor_gaussian_head,
         ).to(device)
 
@@ -194,9 +196,12 @@ class RVI_SAC(AlgorithmBase):
 
         self.logs.log("critic_loss", float(critic_loss))
         self.logs.log("critic_reset_loss", float(critic_reset_loss))
-        self.logs.log("q1_pred", float(q1_pred.mean()))
-        self.logs.log("q2_pred", float(q2_pred.mean()))
-        self.logs.log("q_reset_pred", float(q_reset_pred.mean()))
+        self.logs.log("q1_pred_mean", float(q1_pred.mean()))
+        self.logs.log("q1_pred_std", float(q1_pred.std()))
+        self.logs.log("q2_pred_mean", float(q2_pred.mean()))
+        self.logs.log("q2_pred_std", float(q2_pred.std()))
+        self.logs.log("q_reset_pred_mean", float(q_reset_pred.mean()))
+        self.logs.log("q_reset_pred_std", float(q_reset_pred.std()))
         self.logs.log("rho", float(self.rho))
         self.logs.log("rho_reset", float(self.rho_reset))
 

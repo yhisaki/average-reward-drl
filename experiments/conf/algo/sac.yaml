@@ -1,6 +1,8 @@
 id: SAC
 name: ${algo.id}
 params:
+  critic_hidden_dim: 256
+  actor_hidden_dim: 256
   gamma: 0.99
   batch_size: 256
   lr: 0.0003
