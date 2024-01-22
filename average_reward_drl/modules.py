@@ -106,7 +106,7 @@ class SquashedDiagonalGaussianHead(nn.Module):
 
     def forward(self, x):
         mean, log_scale = torch.chunk(x, 2, dim=x.dim() // 2)
-        log_scale = torch.clamp(log_scale, -5.0, 2.0)
+        log_scale = torch.clamp(log_scale, -20.0, 2.0)
         scale = torch.exp(log_scale)
         base_distribution = Independent(Normal(loc=mean, scale=scale), 1)
         squashed_distribution = TransformedDistribution(

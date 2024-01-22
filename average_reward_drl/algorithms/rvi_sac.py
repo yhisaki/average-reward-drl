@@ -1,5 +1,4 @@
 import copy
-from typing import Union
 
 import numpy as np
 import torch
@@ -27,20 +26,20 @@ class RVI_SAC(AlgorithmBase):
         dim_state: int,
         dim_action: int,
         critic_hidden_dim: int = 256,
-        critic_reset_hidden_dim: int = 16,
+        critic_reset_hidden_dim: int = 64,
         actor_hidden_dim: int = 256,
         target_reset_prob: float = 1e-3,
-        fq_gain: float = 1e-3,
+        fq_gain: float = 1e-1,
+        fq_reset_gain: float = 1e-1,
         lr: float = 3e-4,
         batch_size: int = 256,
         replay_buffer_capacity: int = 10**6,
         replay_start_size: int = 10**4,
         tau: float = 0.005,
-        rho_update_tau: float = 1e-2,
+        fq_update_tau: float = 1e-2,
         use_reset_scheme: bool = True,
-        device: Union[str, torch.device] = torch.device(
-            "cuda:0" if cuda.is_available() else "cpu"
-        ),
+        device: str
+        | torch.device = torch.device("cuda:0" if cuda.is_available() else "cpu"),
         **kwargs,
     ) -> None:
         super().__init__()
@@ -74,9 +73,9 @@ class RVI_SAC(AlgorithmBase):
             copy.deepcopy(self.critic_reset).eval().requires_grad_(False)
         )
 
-        # define rho (average reward)
-        self.rho = 0.0
-        self.rho_reset = 0.0
+        # define fq (average reward)
+        self.fq = 0.0
+        self.fq_reset = 0.0
 
         # actor
         self.actor_gaussian_head = SquashedDiagonalGaussianHead()
@@ -89,7 +88,7 @@ class RVI_SAC(AlgorithmBase):
             self.actor_gaussian_head,
         ).to(device)
 
-        self.reset_cost = ScalarHolder(value=0.0, transform_fn=F.softplus).to(device)
+        self.reset_cost = ScalarHolder(value=0.0).to(device)
         self.reset_cost_optimizer = Adam(self.reset_cost.parameters(), lr=lr)
         self.target_reset_prob = target_reset_prob
 
@@ -111,8 +110,9 @@ class RVI_SAC(AlgorithmBase):
 
         # define other hyperparameters
         self.fq_gain = fq_gain
+        self.fq_reset_gain = fq_reset_gain
+        self.fq_update_tau = fq_update_tau
         self.tau = tau
-        self.rho_update_tau = rho_update_tau
 
         self.device = device
 
@@ -147,6 +147,7 @@ class RVI_SAC(AlgorithmBase):
             batch = Batch(**samples, device=self.device)
             self.update_critic(batch)
             self.update_actor(batch)
+            self.update_reset_cost(batch)
             self.update_target_networks()
 
     def update_critic(self, batch: Batch):
@@ -165,11 +166,11 @@ class RVI_SAC(AlgorithmBase):
             reset = batch.terminated.float()
             reward = batch.reward - float(self.reset_cost()) * reset
 
-            target_q = reward - self.rho + (next_q - entropy_term)
-            target_q_reset = reset - self.rho_reset + torch.flatten(next_q_reset)
+            target_q = reward - self.fq + (next_q - entropy_term)
+            target_q_reset = reset - self.fq_reset + torch.flatten(next_q_reset)
 
-            target_rho = torch.sum(next_q - entropy_term) * self.fq_gain
-            target_rho_reset = torch.sum(next_q_reset) * self.fq_gain
+            target_fq = torch.mean(next_q - entropy_term) * self.fq_gain
+            target_fq_reset = torch.mean(next_q_reset) * self.fq_reset_gain
 
         q1_pred, q2_pred = self.critic((batch.state, batch.action))
         q_reset_pred = self.critic_reset((batch.state, batch.action))
@@ -179,7 +180,7 @@ class RVI_SAC(AlgorithmBase):
             + F.mse_loss(q2_pred.flatten(), target_q)
         )
 
-        critic_reset_loss = F.mse_loss(q_reset_pred.flatten(), target_q_reset)
+        critic_reset_loss = 0.5 * F.mse_loss(q_reset_pred.flatten(), target_q_reset)
 
         self.critic_optimizer.zero_grad()
         self.critic_reset_optimizer.zero_grad()
@@ -187,12 +188,10 @@ class RVI_SAC(AlgorithmBase):
         self.critic_optimizer.step()
         self.critic_reset_optimizer.step()
 
-        self.rho = (
-            1 - self.rho_update_tau
-        ) * self.rho + self.rho_update_tau * target_rho
-        self.rho_reset = (
-            1 - self.rho_update_tau
-        ) * self.rho_reset + self.rho_update_tau * target_rho_reset
+        self.fq = (1 - self.fq_update_tau) * self.fq + self.fq_update_tau * target_fq
+        self.fq_reset = (
+            1 - self.fq_update_tau
+        ) * self.fq_reset + self.fq_update_tau * target_fq_reset
 
         self.logs.log("critic_loss", float(critic_loss))
         self.logs.log("critic_reset_loss", float(critic_reset_loss))
@@ -202,14 +201,25 @@ class RVI_SAC(AlgorithmBase):
         self.logs.log("q2_pred_std", float(q2_pred.std()))
         self.logs.log("q_reset_pred_mean", float(q_reset_pred.mean()))
         self.logs.log("q_reset_pred_std", float(q_reset_pred.std()))
-        self.logs.log("rho", float(self.rho))
-        self.logs.log("rho_reset", float(self.rho_reset))
+        self.logs.log("fq", float(self.fq))
+        self.logs.log("fq_reset", float(self.fq_reset))
+
+    def update_reset_cost(self, _: Batch):
+        # update reset cost
+        reset_cost = self.reset_cost()
+        reset_cost_loss = -torch.mean(
+            reset_cost * (self.fq_reset - self.target_reset_prob)
+        )
+        self.reset_cost_optimizer.zero_grad()
+        reset_cost_loss.backward()
+        self.reset_cost_optimizer.step()
+        self.reset_cost.value.data = torch.clamp(self.reset_cost.value.data, min=0.0)
+        self.logs.log("reset_cost", float(self.reset_cost()))
 
     def update_actor(self, batch: Batch):
         action_dist: Distribution = self.actor(batch.state)
         action = action_dist.rsample()
         log_prob = action_dist.log_prob(action)
-        reset_cost = self.reset_cost()
 
         q1, q2 = self.critic((batch.state, action))
 
@@ -233,17 +243,8 @@ class RVI_SAC(AlgorithmBase):
         temperature_loss.backward()
         self.temperature_optimizer.step()
 
-        # update reset cost
-        reset_cost_loss = -torch.mean(
-            reset_cost * (self.rho_reset - self.target_reset_prob)
-        )
-        self.reset_cost_optimizer.zero_grad()
-        reset_cost_loss.backward()
-        self.reset_cost_optimizer.step()
-
         self.logs.log("policy_loss", float(policy_loss))
         self.logs.log("temperature", float(self.temperature()))
-        self.logs.log("reset_cost", float(self.reset_cost()))
 
     def update_target_networks(self):
         polyak_update(

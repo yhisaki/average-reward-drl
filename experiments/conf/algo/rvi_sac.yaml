@@ -1,15 +1,11 @@
+defaults:
+  - common
+  
 id: RVI_SAC
-name: ${algo.id}
 params:
-  batch_size: 256
-  lr: 0.0003
-  critic_hidden_dim: 256
-  critic_reset_hidden_dim: 16
-  actor_hidden_dim: 256
-  replay_buffer_capacity: 1000000
-  replay_start_size: 10000
-  tau: 0.005
-  fq_gain: 0.002
-  rho_update_tau: 0.01
+  critic_reset_hidden_dim: 64
+  fq_gain: 1.0
+  fq_reset_gain: 0.01
+  fq_update_tau: 0.01
   target_reset_prob: 0.001
   use_reset_scheme: ${env.has_termination}
