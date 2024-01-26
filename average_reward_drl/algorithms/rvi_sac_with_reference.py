@@ -51,8 +51,12 @@ class RVI_SAC_WITH_REFERENCE(RVI_SAC):
             **kwargs
         )
         # reference
-        self.reference_state = torch.tensor(reference_state).float().to(device).unsqueeze(0)
-        self.reference_action = torch.tensor(reference_action).float().to(device).unsqueeze(0)
+        self.reference_state = (
+            torch.tensor(reference_state).float().to(device).unsqueeze(0)
+        )
+        self.reference_action = (
+            torch.tensor(reference_action).float().to(device).unsqueeze(0)
+        )
 
     def update_critic(self, batch: Batch):
         with torch.no_grad():
@@ -85,12 +89,11 @@ class RVI_SAC_WITH_REFERENCE(RVI_SAC):
         q1_pred, q2_pred = self.critic((batch.state, batch.action))
         q_reset_pred = self.critic_reset((batch.state, batch.action))
 
-        critic_loss = 0.5 * (
-            F.mse_loss(q1_pred.flatten(), target_q)
-            + F.mse_loss(q2_pred.flatten(), target_q)
+        critic_loss = F.mse_loss(q1_pred.flatten(), target_q) + F.mse_loss(
+            q2_pred.flatten(), target_q
         )
 
-        critic_reset_loss = 0.5 * F.mse_loss(q_reset_pred.flatten(), target_q_reset)
+        critic_reset_loss = F.mse_loss(q_reset_pred.flatten(), target_q_reset)
 
         self.critic_optimizer.zero_grad()
         self.critic_reset_optimizer.zero_grad()
