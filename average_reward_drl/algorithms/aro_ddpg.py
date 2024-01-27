@@ -8,11 +8,7 @@ from torch import cuda, nn
 from torch.optim import Adam
 
 from average_reward_drl.algorithm import AlgorithmBase
-from average_reward_drl.modules import (
-    ConcatStateAction,
-    MultiLinear,
-    ScalarHolder,
-)
+from average_reward_drl.modules import ConcatStateAction, MultiLinear, ScalarHolder
 from average_reward_drl.replay_buffer import Batch, ReplayBuffer
 from average_reward_drl.utils import polyak_update
 

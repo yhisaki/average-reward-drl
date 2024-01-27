@@ -8,7 +8,6 @@ from omegaconf import DictConfig, OmegaConf
 import wandb
 from average_reward_drl import DMCWrapper, fix_seed, make_algorithm, train
 
-
 log = logging.getLogger(__name__)
 
 

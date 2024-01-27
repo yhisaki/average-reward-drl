@@ -1,10 +1,11 @@
 import numpy as np
 import torch
-from torch import cuda
 import torch.nn.functional as F
+from torch import cuda
 from torch.distributions import Distribution
-from average_reward_drl.replay_buffer import Batch
+
 from average_reward_drl.algorithms.rvi_sac import RVI_SAC
+from average_reward_drl.replay_buffer import Batch
 
 
 class RVI_SAC_WITH_REFERENCE(RVI_SAC):
