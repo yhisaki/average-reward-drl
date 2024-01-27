@@ -137,9 +137,8 @@ class SAC(AlgorithmBase):
 
         q1_pred, q2_pred = self.critic((batch.state, batch.action))
 
-        critic_loss = 0.5 * (
-            F.mse_loss(q1_pred.flatten(), target_q)
-            + F.mse_loss(q2_pred.flatten(), target_q)
+        critic_loss = F.mse_loss(q1_pred.flatten(), target_q) + F.mse_loss(
+            q2_pred.flatten(), target_q
         )
 
         self.critic_optimizer.zero_grad()
