@@ -1,0 +1,14 @@
+id: ARO_DDPG
+name: ARO_DDPG
+params:
+  batch_size: 256
+  lr: 0.0003
+  critic_hidden_dim: 128
+  actor_hidden_dim: 128
+  update_interval: 10
+  critic_update_freq: 1
+  actor_update_freq: 2
+  replay_buffer_capacity: 1000000
+  replay_start_size: 10000
+  tau: 0.005
+  use_reset_scheme: False

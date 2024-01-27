@@ -8,31 +8,49 @@ from torch import cuda, nn
 from torch.optim import Adam
 
 from average_reward_drl.algorithm import AlgorithmBase
-from average_reward_drl.modules import ConcatStateAction
+from average_reward_drl.modules import (
+    ConcatStateAction,
+    MultiLinear,
+    ScalarHolder,
+)
 from average_reward_drl.replay_buffer import Batch, ReplayBuffer
 from average_reward_drl.utils import polyak_update
 
 
-def get_q_network(dim_state: int, dim_action: int):
-    return nn.Sequential(
-        ConcatStateAction(),
-        nn.Linear(dim_state + dim_action, 128),
-        nn.ReLU(),
-        nn.Linear(128, 128),
-        nn.ReLU(),
-        nn.Linear(128, 1),
-    )
+class OUNoise(object):
+    def __init__(
+        self,
+        action_dim: int,
+        mu=0.0,
+        theta=0.15,
+        max_sigma=0.2,
+        min_sigma=0.2,
+        decay_period=100000,
+    ):
+        self.mu = mu
+        self.theta = theta
+        self.sigma = max_sigma
+        self.max_sigma = max_sigma
+        self.min_sigma = min_sigma
+        self.decay_period = decay_period
+        self.action_dim = action_dim
+        self.reset()
 
+    def reset(self):
+        self.state = np.ones(self.action_dim) * self.mu
 
-def get_policy_network(dim_state: int, dim_action: int):
-    return nn.Sequential(
-        nn.Linear(dim_state, 128),
-        nn.ReLU(),
-        nn.Linear(128, 128),
-        nn.ReLU(),
-        nn.Linear(128, dim_action),
-        nn.Tanh(),
-    )
+    def evolve_state(self):
+        x = self.state
+        dx = self.theta * (self.mu - x) + self.sigma * np.random.randn(self.action_dim)
+        self.state = x + dx
+        return self.state
+
+    def get_action(self, action, t=0):
+        ou_state = self.evolve_state()
+        self.sigma = self.max_sigma - (self.max_sigma - self.min_sigma) * min(
+            1.0, t / self.decay_period
+        )
+        return np.clip(action + ou_state, -1.0, 1.0)
 
 
 class ARO_DDPG(AlgorithmBase):
@@ -40,6 +58,8 @@ class ARO_DDPG(AlgorithmBase):
         self,
         dim_state: int,
         dim_action: int,
+        critic_hidden_dim: int = 128,
+        actor_hidden_dim: int = 128,
         update_interval: int = 10,
         critic_update_freq: int = 1,
         actor_update_freq: int = 2,
@@ -51,25 +71,8 @@ class ARO_DDPG(AlgorithmBase):
         device: Union[str, torch.device] = torch.device(
             "cuda:0" if cuda.is_available() else "cpu"
         ),
+        **kwargs: Any,
     ) -> None:
-        """
-        ARO-DDPG algorithm.
-
-        Args:
-            dim_state (int): Dimension of the state space.
-            dim_action (int): Dimension of the action space.
-            update_interval (int, optional): Interval of updates. Defaults to 10.
-            critic_update_freq (int, optional): Frequency of critic updates. Defaults to 1.
-            actor_update_freq (int, optional): Frequency of actor updates. Defaults to 2.
-            lr (float, optional): Learning rate. Defaults to 3e-4.
-            batch_size (int, optional): Batch size. Defaults to 256.
-            replay_buffer_capacity (int, optional): Capacity of the replay buffer. Defaults to 10**6.
-            replay_start_size (int, optional): Number of transitions to be stored in the replay buffer before training.\
-                Defaults to 1000.
-            tau (float, optional): Weight for the target network updates. Defaults to 0.005.
-            device (Union[str, torch.device], optional): Device to use.\
-                  Defaults to torch.device("cuda:0" if cuda.is_available() else "cpu").
-        """
         super().__init__()
 
         # define dimensions
@@ -77,28 +80,42 @@ class ARO_DDPG(AlgorithmBase):
         self.dim_action = dim_action
 
         # define networks
-        self.q1 = get_q_network(dim_state, dim_action).to(device)
-        self.q2 = get_q_network(dim_state, dim_action).to(device)
+        num_parallel = 2
+        # critic
+        self.critic = nn.Sequential(
+            ConcatStateAction(),
+            MultiLinear(num_parallel, dim_state + dim_action, critic_hidden_dim),
+            nn.ReLU(),
+            MultiLinear(num_parallel, critic_hidden_dim, critic_hidden_dim),
+            nn.ReLU(),
+            MultiLinear(num_parallel, critic_hidden_dim, 1),
+        ).to(device)
+        self.critic_target = copy.deepcopy(self.critic).eval().requires_grad_(False)
 
-        self.q1_target = copy.deepcopy(self.q1).eval().requires_grad_(False)
-        self.q2_target = copy.deepcopy(self.q2).eval().requires_grad_(False)
+        self.rho = ScalarHolder(value=0.0).to(device)
 
-        self.policy = get_policy_network(dim_state, dim_action).to(device)
-        self.policy_target = copy.deepcopy(self.policy).eval().requires_grad_(False)
+        self.actor = nn.Sequential(
+            nn.Linear(dim_state, actor_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(actor_hidden_dim, actor_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(actor_hidden_dim, dim_action),
+            nn.Tanh(),
+        ).to(device)
+
+        self.actor_target = copy.deepcopy(self.actor).eval().requires_grad_(False)
+
+        self.ou_noise = OUNoise(dim_action)
 
         # define optimizers
-        self.q_optimizer = Adam(
-            list(self.q1.parameters()) + list(self.q2.parameters()), lr=lr
-        )
-
-        self.policy_optimizer = Adam(self.policy.parameters(), lr=lr)
-
-        self.rho = torch.tensor([0.0], requires_grad=True, device=device)
-        self.rho_optimizer = Adam([self.rho], lr=lr)
+        self.critic_optimizer = Adam(self.critic.parameters(), lr=lr)
+        self.actor_optimizer = Adam(self.actor.parameters(), lr=lr)
+        self.rho_optimizer = Adam(self.rho.parameters(), lr=lr)
 
         self.replay_buffer = ReplayBuffer(capacity=replay_buffer_capacity)
         self.replay_start_size = replay_start_size
         self.batch_size = batch_size
+
         # replay_start_size should be larger than batch_size
         assert replay_start_size >= batch_size
 
@@ -117,13 +134,12 @@ class ARO_DDPG(AlgorithmBase):
                     action = np.random.uniform(-1, 1, size=(self.dim_action,))
                 else:
                     state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
-                    action = self.policy(state).squeeze(
-                        0
-                    ).cpu().numpy() + np.random.normal(0, 0.1, size=(self.dim_action,))
+                    action = self.actor(state).squeeze(0).cpu().numpy()
+                    action = self.ou_noise.get_action(action)
 
             else:
                 state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
-                action = self.policy(state).squeeze(0).cpu().numpy()
+                action = self.actor(state).squeeze(0).cpu().numpy()
 
             action = np.clip(action, -1.0, 1.0)
 
@@ -156,44 +172,41 @@ class ARO_DDPG(AlgorithmBase):
     def update_critic(self, batch: Batch) -> Any:
         # Compute target Q value
         with torch.no_grad():
-            next_actions = self.policy_target(batch.next_state)
-            next_q1 = self.q1_target((batch.next_state, next_actions))
-            next_q2 = self.q2_target((batch.next_state, next_actions))
+            next_actions = self.actor_target(batch.next_state)
+            next_q1, next_q2 = self.critic_target((batch.next_state, next_actions))
             next_q = (1 - batch.terminated.to(torch.float32)) * torch.min(
                 next_q1, next_q2
             ).flatten()
 
         # Compute Q loss
-        q1 = self.q1((batch.state, batch.action)).flatten()
-        q2 = self.q2((batch.state, batch.action)).flatten()
+        q1, q2 = self.critic((batch.state, batch.action))
+        rho = self.rho()
 
         critic_loss = (
-            F.mse_loss(q1 + self.rho, batch.reward + next_q)
-            + F.mse_loss(q2 + self.rho, batch.reward + next_q)
+            F.mse_loss(q1.flatten() + rho, batch.reward + next_q)
+            + F.mse_loss(q2.flatten() + rho, batch.reward + next_q)
         ) / 2.0
 
         # Update Q function and rho
-        self.q_optimizer.zero_grad()
+        self.critic_optimizer.zero_grad()
         self.rho_optimizer.zero_grad()
         critic_loss.backward()
-        self.q_optimizer.step()
+        self.critic_optimizer.step()
         self.rho_optimizer.step()
 
     def update_actor(self, batch: Batch) -> Any:
-        actions = self.policy(batch.state)
-        q1 = self.q1((batch.state, actions))
-        q2 = self.q2((batch.state, actions))
+        actions = self.actor(batch.state)
+        q1, q2 = self.critic((batch.state, actions))
         q = torch.min(q1, q2)
 
         actor_loss = -q.mean()
 
-        self.policy_optimizer.zero_grad()
+        self.actor_optimizer.zero_grad()
         actor_loss.backward()
-        self.policy_optimizer.step()
+        self.actor_optimizer.step()
 
     def update_target_networks(self) -> Any:
-        polyak_update(self.q1.parameters(), self.q1_target.parameters(), self.tau)
-        polyak_update(self.q2.parameters(), self.q2_target.parameters(), self.tau)
         polyak_update(
-            self.policy.parameters(), self.policy_target.parameters(), self.tau
+            self.critic.parameters(), self.critic_target.parameters(), self.tau
         )
+        polyak_update(self.actor.parameters(), self.actor_target.parameters(), self.tau)
