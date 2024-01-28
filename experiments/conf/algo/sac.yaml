@@ -4,4 +4,4 @@ defaults:
 id: SAC
 params:
   gamma: 0.99
-  use_reset_scheme: False
+use_reset_scheme: false

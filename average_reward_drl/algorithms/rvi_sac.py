@@ -37,7 +37,6 @@ class RVI_SAC(AlgorithmBase):
         replay_start_size: int = 10**4,
         tau: float = 0.005,
         fq_update_tau: float = 1e-2,
-        use_reset_scheme: bool = True,
         device: str
         | torch.device = torch.device("cuda:0" if cuda.is_available() else "cpu"),
         **kwargs,
@@ -91,8 +90,6 @@ class RVI_SAC(AlgorithmBase):
         self.reset_cost = ScalarHolder(value=0.0).to(device)
         self.reset_cost_optimizer = Adam(self.reset_cost.parameters(), lr=lr)
         self.target_reset_prob = target_reset_prob
-
-        self.use_reset_scheme = use_reset_scheme
 
         # define optimizers
         self.critic_optimizer = Adam(self.critic.parameters(), lr=lr)

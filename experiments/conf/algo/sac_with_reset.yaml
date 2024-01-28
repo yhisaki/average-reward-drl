@@ -1,7 +1,7 @@
 defaults:
-  - common
+  - sac
 
-id: RVI_SAC
+id: SAC_WITH_RESET
 params:
   critic_reset_hidden_dim: 64
   fq_gain: 1.0
