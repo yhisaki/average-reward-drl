@@ -1,0 +1,12 @@
+defaults:
+  - aro_ddpg
+
+id: ARO_DDPG_WITH_RESET
+params:
+  critic_reset_hidden_dim: 64
+  fq_gain: 1.0
+  fq_reset_gain: 1.0
+  fq_update_tau: 0.005
+  target_reset_prob: 0.001
+
+use_reset_scheme: true

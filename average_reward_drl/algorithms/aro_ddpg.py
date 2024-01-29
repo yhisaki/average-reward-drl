@@ -8,6 +8,7 @@ from torch import cuda, nn
 from torch.optim import Adam
 
 from average_reward_drl.algorithm import AlgorithmBase
+from average_reward_drl.logger import Logger
 from average_reward_drl.modules import ConcatStateAction, MultiLinear, ScalarHolder
 from average_reward_drl.replay_buffer import Batch, ReplayBuffer
 from average_reward_drl.utils import polyak_update
@@ -123,6 +124,10 @@ class ARO_DDPG(AlgorithmBase):
 
         self.device = device
 
+        self.logs = Logger()
+
+        self.just_updated = False
+
     def act(self, state: np.ndarray) -> np.ndarray:
         with torch.no_grad():
             if self.training:
@@ -143,8 +148,6 @@ class ARO_DDPG(AlgorithmBase):
 
     def update_if_dataset_is_ready(self) -> Any:
         assert self.training
-
-        self.just_updated = False
 
         if len(self.replay_buffer) < self.replay_start_size:
             return
@@ -190,16 +193,25 @@ class ARO_DDPG(AlgorithmBase):
         self.critic_optimizer.step()
         self.rho_optimizer.step()
 
+        self.logs.log("critic_loss", float(critic_loss))
+        self.logs.log("rho", float(self.rho()))
+        self.logs.log("q1_pred_mean", float(q1.mean()))
+        self.logs.log("q2_pred_mean", float(q2.mean()))
+        self.logs.log("q1_pred_std", float(q1.std()))
+        self.logs.log("q2_pred_std", float(q2.std()))
+
     def update_actor(self, batch: Batch) -> Any:
         actions = self.actor(batch.state)
         q1, q2 = self.critic((batch.state, actions))
         q = torch.min(q1, q2)
 
-        actor_loss = -q.mean()
+        policy_loss = -q.mean()
 
         self.actor_optimizer.zero_grad()
-        actor_loss.backward()
+        policy_loss.backward()
         self.actor_optimizer.step()
+
+        self.logs.log("policy_loss", float(policy_loss))
 
     def update_target_networks(self) -> Any:
         polyak_update(
