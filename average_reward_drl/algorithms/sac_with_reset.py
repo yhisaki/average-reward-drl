@@ -2,20 +2,15 @@ import copy
 from typing import Any
 
 import torch
+import torch.nn.functional as F
 from torch import cuda, nn
+from torch.distributions import Distribution
 from torch.optim import Adam
 
 from average_reward_drl.algorithms.sac import SAC
-from average_reward_drl.modules import (
-    ConcatStateAction,
-    ScalarHolder,
-    ortho_init,
-)
-
+from average_reward_drl.modules import ConcatStateAction, ScalarHolder, ortho_init
 from average_reward_drl.replay_buffer import Batch
-from torch.distributions import Distribution
-
-import torch.nn.functional as F
+from average_reward_drl.utils import polyak_update
 
 
 class SAC_WITH_RESET(SAC):
@@ -141,3 +136,11 @@ class SAC_WITH_RESET(SAC):
         self.reset_cost_optimizer.step()
         self.reset_cost.value.data = torch.clamp(self.reset_cost.value.data, min=0.0)
         self.logs.log("reset_cost", float(self.reset_cost()))
+
+    def update_target_networks(self):
+        super().update_target_networks()
+        polyak_update(
+            self.critic_reset.parameters(),
+            self.critic_reset_target.parameters(),
+            self.tau,
+        )
