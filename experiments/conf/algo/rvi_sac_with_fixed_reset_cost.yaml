@@ -1,0 +1,7 @@
+defaults:
+  - rvi_sac
+
+id: RVI_SAC_WITH_FIXED_RESET_COST
+
+params:
+  reset_cost: 0.0
