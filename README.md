@@ -19,7 +19,6 @@ poetry install
 - [x] (proposal) RVI-SAC
 - [x] [Soft Actor-Critic](https://arxiv.org/abs/1801.01290) (Original Implementation: [here]())
 - [x] [ARO-DDPG](https://arxiv.org/abs/2305.12239) (Original Implementation: [here](https://github.com/namansaxena9/ARO-DDPG))
-- [ ] [ATRPO](https://arxiv.org/abs/2305.12239)
 
 ## Run the experiment code
 
@@ -33,3 +32,5 @@ poetry run python3 experiments/main.py \
 ```
 
 ## Results
+
+![](assets/result.png)
