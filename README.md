@@ -7,7 +7,7 @@ $$ \rho^\pi := \lim_{T \rightarrow \infty} \frac{1}{T} E_\pi [\sum_{t=0}^T R_t] 
 
 Average reward is a more natural objective than the discounted reward sum for continuing tasks (e.g., locomotion tasks) where episodes continue indefinitely. By utilizing the average reward instead of the discounted reward, performance improvements can be expected. Our algorithm, RVI-SAC, is a novel method that combines average reward with Soft Actor-Critic.
 
-This research has been accepted for presentation at ICML 2024.
+This research has been accepted at ICML 2024.
 
 ## Installation
 
