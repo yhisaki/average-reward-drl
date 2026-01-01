@@ -36,7 +36,7 @@ Hyperparameters are managed by [hydra](https://hydra.cc/docs/intro/). See [confi
 ```bash
 uv run python3 experiments/main.py \
   algo=rvi_sac \
-  env=Ant-v4 \
+  env=gymnasium/Ant-v5 \
   seed=0
 ```
 
