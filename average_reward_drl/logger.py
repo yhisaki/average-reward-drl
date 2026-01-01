@@ -1,12 +1,16 @@
 from statistics import mean
-from typing import Dict, List
+from typing import Dict, List, Union
+
+import torch
 
 
 class Logger(object):
     def __init__(self) -> None:
         self._logs: Dict[str, List[float]] = {}
 
-    def log(self, key: str, value: float) -> None:
+    def log(self, key: str, value: Union[float, torch.Tensor]) -> None:
+        if isinstance(value, torch.Tensor):
+            value = value.detach().cpu().item()
         if key not in self._logs:
             self._logs[key] = []
         self._logs[key].append(value)

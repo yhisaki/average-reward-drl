@@ -189,16 +189,16 @@ class RVI_SAC(AlgorithmBase):
             1 - self.fq_update_tau
         ) * self.fq_reset + self.fq_update_tau * target_fq_reset
 
-        self.logs.log("critic_loss", float(critic_loss))
-        self.logs.log("critic_reset_loss", float(critic_reset_loss))
-        self.logs.log("q1_pred_mean", float(q1_pred.mean()))
-        self.logs.log("q1_pred_std", float(q1_pred.std()))
-        self.logs.log("q2_pred_mean", float(q2_pred.mean()))
-        self.logs.log("q2_pred_std", float(q2_pred.std()))
-        self.logs.log("q_reset_pred_mean", float(q_reset_pred.mean()))
-        self.logs.log("q_reset_pred_std", float(q_reset_pred.std()))
-        self.logs.log("fq", float(self.fq))
-        self.logs.log("fq_reset", float(self.fq_reset))
+        self.logs.log("critic_loss", critic_loss)
+        self.logs.log("critic_reset_loss", critic_reset_loss)
+        self.logs.log("q1_pred_mean", q1_pred.mean())
+        self.logs.log("q1_pred_std", q1_pred.std())
+        self.logs.log("q2_pred_mean", q2_pred.mean())
+        self.logs.log("q2_pred_std", q2_pred.std())
+        self.logs.log("q_reset_pred_mean", q_reset_pred.mean())
+        self.logs.log("q_reset_pred_std", q_reset_pred.std())
+        self.logs.log("fq", self.fq)
+        self.logs.log("fq_reset", self.fq_reset)
 
     def update_reset_cost(self, _: Batch):
         # update reset cost
@@ -210,7 +210,7 @@ class RVI_SAC(AlgorithmBase):
         reset_cost_loss.backward()
         self.reset_cost_optimizer.step()
         self.reset_cost.value.data = torch.clamp(self.reset_cost.value.data, min=0.0)
-        self.logs.log("reset_cost", float(self.reset_cost()))
+        self.logs.log("reset_cost", self.reset_cost())
 
     def update_actor(self, batch: Batch):
         action_dist: Distribution = self.actor(batch.state)
@@ -239,8 +239,8 @@ class RVI_SAC(AlgorithmBase):
         temperature_loss.backward()
         self.temperature_optimizer.step()
 
-        self.logs.log("policy_loss", float(policy_loss))
-        self.logs.log("temperature", float(self.temperature()))
+        self.logs.log("policy_loss", policy_loss)
+        self.logs.log("temperature", self.temperature())
 
     def update_target_networks(self):
         polyak_update(

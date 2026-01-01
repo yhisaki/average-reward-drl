@@ -1,5 +1,6 @@
 from typing import Optional
 
+import numpy as np
 from dm_control import suite
 from dm_control.rl.control import Environment as DMCEnv
 from gymnasium.core import Env as GymnasiumEnv
@@ -29,17 +30,17 @@ class DMCWrapper(GymnasiumEnv):
         self._max_episode_steps = max_episode_steps
 
         self.observation_space = Box(
-            low=-float("inf"),
-            high=float("inf"),
+            low=np.float32(-np.inf),
+            high=np.float32(np.inf),
             shape=self._env.observation_spec()["observations"].shape,
-            dtype=self._env.observation_spec()["observations"].dtype,
+            dtype=np.float32,
         )
 
         self.action_space = Box(
-            low=self._env.action_spec().minimum,
-            high=self._env.action_spec().maximum,
+            low=self._env.action_spec().minimum.astype(np.float32),
+            high=self._env.action_spec().maximum.astype(np.float32),
             shape=self._env.action_spec().shape,
-            dtype=self._env.action_spec().dtype,
+            dtype=np.float32,
         )
 
     def step(self, action):

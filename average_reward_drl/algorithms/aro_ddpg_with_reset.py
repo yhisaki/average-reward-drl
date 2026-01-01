@@ -131,16 +131,16 @@ class ARO_DDPG_WITH_RESET(ARO_DDPG):
         self.rho_optimizer.step()
         self.critic_reset_optimizer.step()
 
-        self.logs.log("critic_loss", float(critic_loss))
-        self.logs.log("critic_reset_loss", float(critic_reset_loss))
-        self.logs.log("rho", float(self.rho()))
-        self.logs.log("q1_pred_mean", float(q1.mean()))
-        self.logs.log("q2_pred_mean", float(q2.mean()))
-        self.logs.log("q1_pred_std", float(q1.std()))
-        self.logs.log("q2_pred_std", float(q2.std()))
-        self.logs.log("q_reset_pred_mean", float(q_reset_pred.mean()))
-        self.logs.log("q_reset_pred_std", float(q_reset_pred.std()))
-        self.logs.log("fq_reset", float(self.fq_reset))
+        self.logs.log("critic_loss", critic_loss)
+        self.logs.log("critic_reset_loss", critic_reset_loss)
+        self.logs.log("rho", self.rho())
+        self.logs.log("q1_pred_mean", q1.mean())
+        self.logs.log("q2_pred_mean", q2.mean())
+        self.logs.log("q1_pred_std", q1.std())
+        self.logs.log("q2_pred_std", q2.std())
+        self.logs.log("q_reset_pred_mean", q_reset_pred.mean())
+        self.logs.log("q_reset_pred_std", q_reset_pred.std())
+        self.logs.log("fq_reset", self.fq_reset)
 
     def update_reset_cost(self, _: Batch):
         # update reset cost
@@ -152,7 +152,7 @@ class ARO_DDPG_WITH_RESET(ARO_DDPG):
         reset_cost_loss.backward()
         self.reset_cost_optimizer.step()
         self.reset_cost.value.data = torch.clamp(self.reset_cost.value.data, min=0.0)
-        self.logs.log("reset_cost", float(self.reset_cost()))
+        self.logs.log("reset_cost", self.reset_cost())
 
     def update_target_networks(self) -> Any:
         super().update_target_networks()

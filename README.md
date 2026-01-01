@@ -13,14 +13,14 @@ This research has been accepted at ICML 2024.
 
 ### Prerequisites
 
-- Make sure you have `poetry` installed on your system. If you don't have it yet, you can install it by following the instructions [here](https://python-poetry.org/docs/#installation).
+- Make sure you have `uv` installed on your system. If you don't have it yet, you can install it by following the instructions [here](https://docs.astral.sh/uv/getting-started/installation/).
 
 ### Setting up the Environment
 
-Run the following command to set up the environment using `poetry`.
+Run the following command to set up the environment using `uv`.
 
 ```bash
-poetry install
+uv sync
 ```
 
 ## Implemented Algorithms
@@ -34,7 +34,7 @@ poetry install
 Hyperparameters are managed by [hydra](https://hydra.cc/docs/intro/). See [config.yaml](experiments/conf/config.yaml) for details.
 
 ```bash
-poetry run python3 experiments/main.py \
+uv run python3 experiments/main.py \
   algo=rvi_sac \
   env=Ant-v4 \
   seed=0

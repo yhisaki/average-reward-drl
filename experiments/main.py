@@ -2,7 +2,8 @@ import logging
 
 import gymnasium
 import hydra
-from gymnasium.wrappers.rescale_action import RescaleAction
+import numpy as np
+from gymnasium.wrappers import RescaleAction
 from omegaconf import DictConfig, OmegaConf
 
 import wandb
@@ -29,8 +30,8 @@ def main(cfg: DictConfig) -> None:
         env_train = DMCWrapper(domain_name, task_name)
         env_eval = DMCWrapper(domain_name, task_name)
 
-    env_train = RescaleAction(env_train, -1.0, 1.0)
-    env_eval = RescaleAction(env_eval, -1.0, 1.0)
+    env_train = RescaleAction(env_train, np.float32(-1.0), np.float32(1.0))
+    env_eval = RescaleAction(env_eval, np.float32(-1.0), np.float32(1.0))
 
     dim_state = env_train.observation_space.shape[0]
     dim_action = env_train.action_space.shape[0]

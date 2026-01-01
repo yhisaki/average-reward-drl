@@ -1,7 +1,7 @@
 defaults:
   - default_gymnasium
 
-id: Ant-v4
+id: Ant-v5
 
 reference_state:
   [
@@ -35,3 +35,4 @@ reference_state:
   ]
 
 reference_action: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+

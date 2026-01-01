@@ -193,12 +193,12 @@ class ARO_DDPG(AlgorithmBase):
         self.critic_optimizer.step()
         self.rho_optimizer.step()
 
-        self.logs.log("critic_loss", float(critic_loss))
-        self.logs.log("rho", float(self.rho()))
-        self.logs.log("q1_pred_mean", float(q1.mean()))
-        self.logs.log("q2_pred_mean", float(q2.mean()))
-        self.logs.log("q1_pred_std", float(q1.std()))
-        self.logs.log("q2_pred_std", float(q2.std()))
+        self.logs.log("critic_loss", critic_loss)
+        self.logs.log("rho", self.rho())
+        self.logs.log("q1_pred_mean", q1.mean())
+        self.logs.log("q2_pred_mean", q2.mean())
+        self.logs.log("q1_pred_std", q1.std())
+        self.logs.log("q2_pred_std", q2.std())
 
     def update_actor(self, batch: Batch) -> Any:
         actions = self.actor(batch.state)
@@ -211,7 +211,7 @@ class ARO_DDPG(AlgorithmBase):
         policy_loss.backward()
         self.actor_optimizer.step()
 
-        self.logs.log("policy_loss", float(policy_loss))
+        self.logs.log("policy_loss", policy_loss)
 
     def update_target_networks(self) -> Any:
         polyak_update(

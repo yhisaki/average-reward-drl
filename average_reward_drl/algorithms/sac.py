@@ -145,11 +145,11 @@ class SAC(AlgorithmBase):
         critic_loss.backward()
         self.critic_optimizer.step()
 
-        self.logs.log("critic_loss", float(critic_loss))
-        self.logs.log("q1_pred_mean", float(q1_pred.mean()))
-        self.logs.log("q1_pred_std", float(q1_pred.std()))
-        self.logs.log("q2_pred_mean", float(q2_pred.mean()))
-        self.logs.log("q2_pred_std", float(q2_pred.std()))
+        self.logs.log("critic_loss", critic_loss)
+        self.logs.log("q1_pred_mean", q1_pred.mean())
+        self.logs.log("q1_pred_std", q1_pred.std())
+        self.logs.log("q2_pred_mean", q2_pred.mean())
+        self.logs.log("q2_pred_std", q2_pred.std())
 
     def update_actor(self, batch: Batch):
         action_dist: Distribution = self.actor(batch.state)
@@ -177,8 +177,8 @@ class SAC(AlgorithmBase):
         temperature_loss.backward()
         self.temperature_optimizer.step()
 
-        self.logs.log("policy_loss", float(policy_loss))
-        self.logs.log("temperature", float(self.temperature()))
+        self.logs.log("policy_loss", policy_loss)
+        self.logs.log("temperature", self.temperature())
 
     def update_target_networks(self):
         polyak_update(

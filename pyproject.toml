@@ -1,35 +1,35 @@
-[tool.poetry]
+[project]
 name = "average-reward-drl"
 version = "0.1.0"
 description = ""
-authors = ["Y.Hisaki <yhisaki31@gmail.com>"]
+authors = [{ name = "Y.Hisaki", email = "yhisaki31@gmail.com" }]
 readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "gymnasium[mujoco]>=0.29.1",
+    "hydra-core>=1.3.2",
+    "wandb>=0.15.12",
+    "torch>=2.1.0",
+    "colorama>=0.4.6",
+    "dm-control>=1.0.12",
+    "tqdm>=4.66.1",
+    "moviepy>=1.0.3",
+    "imageio>=2.33.1",
+    "mujoco>=2.3.4",
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-gymnasium = { extras = ["mujoco"], version = "^0.29.1" }
-hydra-core = "^1.3.2"
-wandb = "^0.15.12"
-torch = { version = "^2.1.0+cu121", source = "pytorch" }
-colorama = "^0.4.6"
-dm-control = "1.0.12"
-tqdm = "^4.66.1"
-moviepy = "^1.0.3"
-imageio = "^2.33.1"
-mujoco = "2.3.4"
+[dependency-groups]
+dev = [
+    "flake8>=6.1.0",
+    "isort>=5.12.0",
+    "black>=23.9.1",
+]
 
-
-[tool.poetry.group.dev.dependencies]
-flake8 = "^6.1.0"
-isort = "^5.12.0"
-black = "^23.9.1"
-
-
-[[tool.poetry.source]]
-name = "pytorch"
-url = "https://download.pytorch.org/whl/cu121"
-priority = "supplemental"
+[tool.uv]
+override-dependencies = [
+    "labmaze ; python_version < '3.13'",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

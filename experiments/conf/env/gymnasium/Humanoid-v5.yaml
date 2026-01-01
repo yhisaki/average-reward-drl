@@ -1,4 +1,5 @@
 defaults:
   - default_gymnasium
 
-id: Hopper-v4
+id: Humanoid-v5
+

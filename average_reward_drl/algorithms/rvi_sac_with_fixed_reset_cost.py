@@ -77,12 +77,12 @@ class RVI_SAC_WITH_FIXED_RESET_COST(RVI_SAC):
 
         self.fq = (1 - self.fq_update_tau) * self.fq + self.fq_update_tau * target_fq
 
-        self.logs.log("critic_loss", float(critic_loss))
-        self.logs.log("q1_pred_mean", float(q1_pred.mean()))
-        self.logs.log("q1_pred_std", float(q1_pred.std()))
-        self.logs.log("q2_pred_mean", float(q2_pred.mean()))
-        self.logs.log("q2_pred_std", float(q2_pred.std()))
-        self.logs.log("fq", float(self.fq))
+        self.logs.log("critic_loss", critic_loss)
+        self.logs.log("q1_pred_mean", q1_pred.mean())
+        self.logs.log("q1_pred_std", q1_pred.std())
+        self.logs.log("q2_pred_mean", q2_pred.mean())
+        self.logs.log("q2_pred_std", q2_pred.std())
+        self.logs.log("fq", self.fq)
 
     def update_reset_cost(self, _: Batch):
         pass

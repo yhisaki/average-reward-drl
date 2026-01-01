@@ -116,14 +116,14 @@ class SAC_WITH_RESET(SAC):
             1 - self.fq_update_tau
         ) * self.fq_reset + self.fq_update_tau * target_fq_reset
 
-        self.logs.log("critic_loss", float(critic_loss))
-        self.logs.log("q1_pred_mean", float(q1_pred.mean()))
-        self.logs.log("q1_pred_std", float(q1_pred.std()))
-        self.logs.log("q2_pred_mean", float(q2_pred.mean()))
-        self.logs.log("q2_pred_std", float(q2_pred.std()))
-        self.logs.log("q_reset_pred_mean", float(q_reset_pred.mean()))
-        self.logs.log("q_reset_pred_std", float(q_reset_pred.std()))
-        self.logs.log("fq_reset", float(self.fq_reset))
+        self.logs.log("critic_loss", critic_loss)
+        self.logs.log("q1_pred_mean", q1_pred.mean())
+        self.logs.log("q1_pred_std", q1_pred.std())
+        self.logs.log("q2_pred_mean", q2_pred.mean())
+        self.logs.log("q2_pred_std", q2_pred.std())
+        self.logs.log("q_reset_pred_mean", q_reset_pred.mean())
+        self.logs.log("q_reset_pred_std", q_reset_pred.std())
+        self.logs.log("fq_reset", self.fq_reset)
 
     def update_reset_cost(self, _: Batch):
         # update reset cost
@@ -135,7 +135,7 @@ class SAC_WITH_RESET(SAC):
         reset_cost_loss.backward()
         self.reset_cost_optimizer.step()
         self.reset_cost.value.data = torch.clamp(self.reset_cost.value.data, min=0.0)
-        self.logs.log("reset_cost", float(self.reset_cost()))
+        self.logs.log("reset_cost", self.reset_cost())
 
     def update_target_networks(self):
         super().update_target_networks()

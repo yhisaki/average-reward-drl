@@ -1,4 +1,5 @@
 defaults:
   - default_gymnasium
 
-id: Humanoid-v4
+id: InvertedDoublePendulum-v5
+

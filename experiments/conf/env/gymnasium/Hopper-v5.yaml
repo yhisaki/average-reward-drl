@@ -1,4 +1,5 @@
 defaults:
   - default_gymnasium
 
-id: InvertedDoublePendulum-v4
+id: Hopper-v5
+

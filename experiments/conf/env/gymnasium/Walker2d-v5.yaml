@@ -1,4 +1,5 @@
 defaults:
   - default_gymnasium
 
-id: Walker2d-v4
+id: Walker2d-v5
+
