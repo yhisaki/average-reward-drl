@@ -2,4 +2,3 @@ defaults:
   - default_gymnasium
 
 id: Hopper-v5
-

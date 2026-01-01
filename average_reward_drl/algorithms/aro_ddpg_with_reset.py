@@ -30,9 +30,10 @@ class ARO_DDPG_WITH_RESET(ARO_DDPG):
         replay_start_size: int = 1000,
         tau: float = 0.005,
         fq_update_tau: float = 1e-2,
-        device: str
-        | torch.device = torch.device("cuda:0" if cuda.is_available() else "cpu"),
-        **kwargs: Any
+        device: str | torch.device = torch.device(
+            "cuda:0" if cuda.is_available() else "cpu"
+        ),
+        **kwargs: Any,
     ) -> None:
         super().__init__(
             dim_state,
@@ -48,7 +49,7 @@ class ARO_DDPG_WITH_RESET(ARO_DDPG):
             replay_start_size,
             tau,
             device,
-            **kwargs
+            **kwargs,
         )
         self.critic_reset = nn.Sequential(
             ConcatStateAction(),

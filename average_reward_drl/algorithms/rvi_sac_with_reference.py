@@ -27,9 +27,10 @@ class RVI_SAC_WITH_REFERENCE(RVI_SAC):
         replay_start_size: int = 10**4,
         tau: float = 0.005,
         fq_update_tau: float = 0.01,
-        device: str
-        | torch.device = torch.device("cuda:0" if cuda.is_available() else "cpu"),
-        **kwargs
+        device: str | torch.device = torch.device(
+            "cuda:0" if cuda.is_available() else "cpu"
+        ),
+        **kwargs,
     ) -> None:
         super().__init__(
             dim_state,
@@ -47,7 +48,7 @@ class RVI_SAC_WITH_REFERENCE(RVI_SAC):
             tau,
             fq_update_tau,
             device,
-            **kwargs
+            **kwargs,
         )
         # reference
         self.reference_state = (

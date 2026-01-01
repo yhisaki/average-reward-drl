@@ -29,9 +29,10 @@ class SAC_WITH_RESET(SAC):
         replay_start_size: int = 1000,
         tau: float = 0.005,
         fq_update_tau: float = 1e-2,
-        device: str
-        | torch.device = torch.device("cuda:0" if cuda.is_available() else "cpu"),
-        **kwargs
+        device: str | torch.device = torch.device(
+            "cuda:0" if cuda.is_available() else "cpu"
+        ),
+        **kwargs,
     ) -> None:
         super().__init__(
             dim_state,
@@ -45,7 +46,7 @@ class SAC_WITH_RESET(SAC):
             replay_start_size,
             tau,
             device,
-            **kwargs
+            **kwargs,
         )
 
         self.critic_reset = nn.Sequential(

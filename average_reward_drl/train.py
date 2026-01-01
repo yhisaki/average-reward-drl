@@ -98,7 +98,8 @@ def train(
                 colorama.Fore.GREEN
                 + "Train: "
                 + colorama.Style.RESET_ALL
-                + f"step: {step}, returns: {total_returns:.3f}, step_per_episode: {step_per_episode}"
+                + f"step: {step}, returns: {total_returns:.3f}, "
+                + f"step_per_episode: {step_per_episode}"
             )
             total_returns = 0.0
             step_per_episode = 0
@@ -120,7 +121,8 @@ def train(
                 colorama.Fore.RED
                 + "Eval: "
                 + colorama.Style.RESET_ALL
-                + f"step: {step}, returns: {eval['returns']:.3f}, step_per_episode: {eval['step_per_episode']}"
+                + f"step: {step}, returns: {eval['returns']:.3f}, "
+                + f"step_per_episode: {eval['step_per_episode']}"
             )
 
         if step % log_interval == 0 and agent.just_updated:
